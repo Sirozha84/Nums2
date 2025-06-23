@@ -3,7 +3,7 @@ $Debug
 Const True = -1
 Const False = 0
 Const Size = 24
-Const MaxLines = 1000
+Const MaxLines = 100
 Const MaxRows = 9
 Dim Shared kLeft$: kLeft$ = Chr$(0) + Chr$(75)
 Dim Shared kRight$: kRight$ = Chr$(0) + Chr$(77)
@@ -22,6 +22,8 @@ Dim Shared Cc
 Dim Shared Nums&
 Dim Shared Background&
 Dim Shared Cursor&
+
+
 
 Init
 GameInit
@@ -77,7 +79,7 @@ Sub Game
     sr = 0 'Selected item
     sc = 0
     a = 0 'Animation frame
-
+    av = Available
     Do
         'Background
         _Limit 60
@@ -96,15 +98,22 @@ Sub Game
             Next
         Next
 
+        Locate 10, 10: Print "Available:"; av
+
         _Display
 
         'Animation
         a = a + 1
         If a > Size Then a = 0
 
+        'Check  Available
+        If av = 0 Then
+            If Not Rewrite Then GameOver: ext = True
+            av = Available
+        End If
+
         'Keyboard
         k$ = InKey$
-
         If k$ = kLeft$ Or k$ = "o" Then Cc = Cc - 1: If Cc < 0 Then Cc = 0
         If k$ = kRight$ Or k$ = "p" Then Cc = Cc + 1: If Cc > GameWidth - 1 Then Cc = GameWidth - 1
         If k$ = kUp$ Or k$ = "q" Then Cr = Cr - 1: If Cr < 0 Then Cr = 0
@@ -120,20 +129,27 @@ Sub Game
                     sel = False
                 Else
                     'Match
-                    If ChechPare(Cr, Cc, sr, sc) Then
+                    If CheckPare(Cr, Cc, sr, sc) Then
                         M(Cr, Cc) = 0
                         M(sr, sc) = 0
                     End If
                     sel = False
+
+                    'Check av
+                    av = Available
                 End If
             End If
         End If
+
+        'Debug...
+        'If k$ = kEnter$ Then r = Rewrite
         'If Len(k$) > 0 Then Print Asc(Mid$(k$, 1, 1)),Asc(Mid$(k$, 2, 1)):end
+
     Loop While Not ext
 End Sub
 
-Function ChechPare (r1, c1, r2, c2)
-    If M(r1, c1) <> M(r2, c2) And M(r1, c1) + M(r2, c2) <> 10 Then ChechPare = False: Exit Function
+Function CheckPare (r1, c1, r2, c2)
+    If M(r1, c1) <> M(r2, c2) And M(r1, c1) + M(r2, c2) <> 10 Then CheckPare = False: Exit Function
     If r1 * GameWidth + c1 < r2 * GameWidth + c2 Then
         rf = r1
         cf = c1
@@ -153,7 +169,7 @@ Function ChechPare (r1, c1, r2, c2)
     Do
         c = c + 1
         If c > GameWidth - 1 Then c = 0: r = r + 1
-        If r = rt And c = ct Then ChechPare = True: Exit Function
+        If r = rt And c = ct Then CheckPare = True: Exit Function
         If M(r, c) > 0 Then ex = True
     Loop While Not ex
 
@@ -163,10 +179,89 @@ Function ChechPare (r1, c1, r2, c2)
     ex = False
     Do
         r = r + 1
-        If r = rt And c = ct Then ChechPare = True: Exit Function
-        If M(r, c) > 0 Or r <> rt Then ex = True
+        If r = rt And c = ct Then CheckPare = True: Exit Function
+        If M(r, c) > 0 Or c <> ct Then ex = True
     Loop While Not ex
 
-    ChechPare = False
+    CheckPare = False
 
 End Function
+
+Function Available
+    cn = 0
+
+    'String
+    r = 0
+    c = 0
+    d = 0
+    Do
+        If d = 0 Then
+            If M(r, c) > 0 Then d = M(r, c)
+        Else
+            If M(r, c) > 0 Then
+                If M(r, c) = d Or M(r, c) + d = 10 Then cn = cn + 1 Else d = M(r, c)
+            End If
+        End If
+        c = c + 1
+        If c > GameWidth - 1 Then c = 0: r = r + 1
+    Loop While r < GameHeight
+
+    'Column
+    For c = 0 To GameWidth - 1
+        r = 0
+        d = 0
+        Do
+            If d = 0 Then
+                If M(r, c) > 0 Then d = M(r, c)
+            Else
+                If M(r, c) > 0 Then
+                    If M(r, c) = d Or M(r, c) + d = 10 Then cn = cn + 1 Else d = M(r, c)
+                End If
+            End If
+            r = r + 1
+        Loop While r < GameHeight
+    Next
+
+    Available = cn
+End Function
+
+Function Rewrite
+    _AutoDisplay
+    Locate 20, 60
+    Print "No more maches... Rewrite..."
+    _Delay 2
+
+
+    'Find end point
+    rt = GameHeight - 1
+    ct = GameWidth - 1
+    Do While M(rt, ct) < 0
+        ct = ct - 1
+    Loop
+    rw = rt
+    cw = ct
+    ct = ct + 1
+    If ct > GameWidth - 1 Then ct = 0: rt = rt + 1
+
+    'Rewrite
+    r = 0
+    c = 0
+    Do
+        If M(r, c) > 0 Then
+            cw = cw + 1
+            If cw > GameWidth - 1 Then cw = 0: rw = rw + 1
+            If rw > MaxLines - 1 Then Rewrite = False: Exit Function
+            M(rw, cw) = M(r, c)
+        End If
+        c = c + 1
+        If c > GameWidth - 1 Then c = 0: r = r + 1
+    Loop Until r = rt And c = ct
+    GameHeight = rw + 1
+    Rewrite = True
+End Function
+
+Sub GameOver
+    _AutoDisplay
+    Locate 20, 60
+    Print "Game Over"
+End Sub
