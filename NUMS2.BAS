@@ -3,8 +3,11 @@ $Debug
 Const True = -1
 Const False = 0
 Const Size = 24
-Const MaxLines = 100
-Const MaxRows = 9
+Const MaxRows = 100
+Const MaxColumns = 9
+Const VisibleRows = 28
+Const Border = 10
+'Const ColWhite = _RGB32(255, 255, 255)
 Dim Shared kLeft$: kLeft$ = Chr$(0) + Chr$(75)
 Dim Shared kRight$: kRight$ = Chr$(0) + Chr$(77)
 Dim Shared kUp$: kUp$ = Chr$(0) + Chr$(72)
@@ -13,7 +16,7 @@ Dim Shared kEnter$: kEnter$ = Chr$(13)
 Dim Shared kEsc$: kEsc$ = Chr$(27)
 'Dim Shared kbs$: kbs$ = Chr$(8)
 
-Dim Shared M(MaxLines, MaxRows) 'Main Field
+Dim Shared M(MaxRows, MaxColumns) 'Main Field
 Dim Shared GameWidth 'Gzme size
 Dim Shared GameHeight
 Dim Shared Cr 'Cursor
@@ -45,15 +48,15 @@ End Sub
 
 Sub GameInit
     GameWidth = 9
-    For r = 0 To MaxLines - 1
-        For c = 0 To MaxRows - 1
+    For r = 0 To MaxRows - 1
+        For c = 0 To MaxColumns - 1
             M(r, c) = -1
         Next
     Next
 
     r = 0
     c = 0
-    For d = 1 To 19
+    For d = 1 To 19 '19
         s$ = Str$(d)
         s$ = Right$(s$, Len(s$) - 1)
         ok = True
@@ -78,35 +81,68 @@ Sub Game
     sel = False 'First select
     sr = 0 'Selected item
     sc = 0
-    a = 0 'Animation frame
+    scroll = 0 'Scroll Shift
+    left = 1280 / 2 - Size * GameWidth / 2 'GameField coordinates
+    top = Size
+    sbl = left + GameWidth * Size + 2 'ScrollBar coordinates
+    sbg = 720 - Size * 2 - 1
     av = Available
+    an = 0 'Animation frame
+    ans = 0 'Animation ScrollBas
+    brs = 0 'Bright ScrollBar
     Do
         'Background
         _Limit 60
         _PutImage (0, 0), Background&
 
+        'Calculating
+        oldscroll = scroll
+        If scroll > Cr - Border Then scroll = Cr - Border
+        If scroll < Cr - VisibleRows + Border + 1 Then scroll = Cr - VisibleRows + Border + 1
+        If scroll > GameHeight - VisibleRows Then scroll = GameHeight - VisibleRows
+        If scroll < 0 Then scroll = 0
+        If oldscroll <> scroll Then ans = 1
+
+        'Cursor
+        _PutImage (left + Cc * Size, top + Cr * Size - scroll * Size), Cursor&, 0, (an, 0)-(an + Size - 1, Size - 1)
+        an = an + 1
+        If an > Size Then an = 0
+
         'GameField
-        left = 1280 / 2 - Size * GameWidth / 2
-        _PutImage (left + Cc * Size, Cr * Size), Cursor&, 0, (a, 0)-(a + Size - 1, Size - 1)
-        For r = 0 To 29
+        For r = 0 To VisibleRows - 1
             For c = 0 To GameWidth - 1
                 If M(r, c) >= 0 Then
-                    sx = M(r, c) * Size
-                    If sel And c = sc And r = sr Then s = 1 Else s = 0
-                    _PutImage (left + c * Size, r * Size), Nums&, 0, (sx, s * Size)-(sx + Size - 1, s * Size + Size - 1)
+                    sx = M(r + scroll, c) * Size
+                    If sel And c = sc And r = sr - scroll Then s = 1 Else s = 0
+                    _PutImage (left + c * Size, top + r * Size), Nums&, 0, (sx, s * Size)-(sx + Size - 1, s * Size + Size - 1)
                 End If
             Next
         Next
 
+        'Scrollbar
+        If GameHeight > VisibleRows Then
+            l = VisibleRows / GameHeight * sbg
+            t = Size + scroll / GameHeight * sbg
+            If ans > 0 Then brs = brs + 10
+            If brs > 512 Then ans = -1
+            If ans < 0 Then brs = brs - 5
+            If brs < 0 Then ans = 0
+            br = brs
+            If br > 255 Then br = 255
+            col& = _RGBA32(255, 255, 255, br / 2)
+            Line (sbl, t + 1)-(sbl, t + l - 1), col&
+            Line (sbl + 1, t)-(sbl + 1, t + l), col&
+            Line (sbl + 2, t)-(sbl + 2, t + l), col&
+            Line (sbl + 3, t + 1)-(sbl + 3, t + l - 1), col&
+        End If
+
+        'Table
         Locate 10, 10: Print "Available:"; av
 
         _Display
 
-        'Animation
-        a = a + 1
-        If a > Size Then a = 0
 
-        'Check  Available
+        'Check Available and rewrite
         If av = 0 Then
             If Not Rewrite Then GameOver: ext = True
             av = Available
@@ -135,7 +171,7 @@ Sub Game
                     End If
                     sel = False
 
-                    'Check av
+                    'Recheck Available
                     av = Available
                 End If
             End If
@@ -229,7 +265,7 @@ Function Rewrite
     _AutoDisplay
     Locate 20, 60
     Print "No more maches... Rewrite..."
-    _Delay 2
+    _Delay 1
 
 
     'Find end point
@@ -250,7 +286,7 @@ Function Rewrite
         If M(r, c) > 0 Then
             cw = cw + 1
             If cw > GameWidth - 1 Then cw = 0: rw = rw + 1
-            If rw > MaxLines - 1 Then Rewrite = False: Exit Function
+            If rw > MaxRows - 1 Then Rewrite = False: Exit Function
             M(rw, cw) = M(r, c)
         End If
         c = c + 1
