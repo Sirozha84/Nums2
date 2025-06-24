@@ -14,17 +14,25 @@ Dim Shared kUp$: kUp$ = Chr$(0) + Chr$(72)
 Dim Shared kDown$: kDown$ = Chr$(0) + Chr$(80)
 Dim Shared kEnter$: kEnter$ = Chr$(13)
 Dim Shared kEsc$: kEsc$ = Chr$(27)
+Dim Shared kHome$: kHome$ = Chr$(0) + Chr$(71)
+Dim Shared kEnd$: kEnd$ = Chr$(0) + Chr$(79)
+Dim Shared kPgUp$: kPgUp$ = Chr$(0) + Chr$(73)
+Dim Shared kPgDn$: kPgDn$ = Chr$(0) + Chr$(81)
 'Dim Shared kbs$: kbs$ = Chr$(8)
 
 Dim Shared M(MaxRows, MaxColumns) 'Main Field
+Dim Shared Nm(MaxRows) 'Row Nums
+Dim Shared Cn(MaxRows) 'Rewrites Count
 Dim Shared GameWidth 'Gzme size
 Dim Shared GameHeight
 Dim Shared Cr 'Cursor
 Dim Shared Cc
+Dim Shared LastRow
 
 Dim Shared Nums&
 Dim Shared Background&
 Dim Shared Cursor&
+Dim Shared Digits&
 
 
 
@@ -44,20 +52,22 @@ Sub Init
     Background& = _LoadImage("Graphics\background.png", 32)
     Nums& = _LoadImage("Graphics\nums.png", 32)
     Cursor& = _LoadImage("Graphics\cursor.png", 32)
+    Digits& = _LoadImage("Graphics\digits.png", 32)
 End Sub
 
 Sub GameInit
     GameWidth = 9
     For r = 0 To MaxRows - 1
-        For c = 0 To MaxColumns - 1
-            M(r, c) = -1
+        For C = 0 To MaxColumns - 1
+            M(r, C) = -1
         Next
     Next
 
     r = 0
-    c = 0
-    For d = 1 To 19 '19
-        s$ = Str$(d)
+    C = 0
+    LastRow = 1
+    For D = 1 To 19 '19
+        s$ = Str$(D)
         s$ = Right$(s$, Len(s$) - 1)
         ok = True
         For i = 1 To Len(s$)
@@ -65,10 +75,12 @@ Sub GameInit
         Next
         If ok Then
             For i = 1 To Len(s$)
-                M(r, c) = Val(Mid$(s$, i, 1))
+                M(r, C) = Val(Mid$(s$, i, 1))
+                Nm(r) = LastRow
+                Cn(r) = 0
                 GameHeight = r + 1
-                c = c + 1
-                If c > GameWidth - 1 Then c = 0: r = r + 1
+                C = C + 1
+                If C > GameWidth - 1 Then C = 0: r = r + 1: LastRow = LastRow + 1
             Next
         End If
     Next
@@ -117,6 +129,42 @@ Sub Game
                     _PutImage (left + c * Size, top + r * Size), Nums&, 0, (sx, s * Size)-(sx + Size - 1, s * Size + Size - 1)
                 End If
             Next
+            If M(r + scroll, 0) >= 0 Then
+                'Num
+                d$ = Str$(Nm(r + scroll))
+                l = Len(d$)
+                For i = 2 To l
+                    n = Val(Mid$(d$, i, 1))
+                    _PutImage (left - (l - i) * 8 - 17, top + r * Size + 7), Digits&, 0, (n * 8, 0)-(n * 8 + 7, 9)
+                Next
+                'Count
+                If Cn(r + scroll) > 0 Then
+                    d$ = Str$(Cn(r + scroll))
+                    l = Len(d$)
+                    For i = 2 To l
+                        n = Val(Mid$(d$, i, 1))
+                        _PutImage (sbl + i * 8 - 7, top + r * Size + 7), Digits&, 0, (n * 8, 0)-(n * 8 + 7, 9)
+                    Next
+                End If
+            End If
+        Next
+
+        'Tips
+        For c = 0 To GameWidth - 1
+            If scroll > 0 Then
+                d = 0
+                For r = scroll - 1 To 0 Step -1
+                    If M(r, c) > 0 Then d = M(r, c): Exit For
+                Next
+                _PutImage (left + c * Size, 0), Nums&, 0, (d * Size, 2 * Size)-(d * Size + Size - 1, 3 * Size - 1)
+            End If
+            If scroll < GameHeight - VisibleRows Then
+                d = 0
+                For r = scroll + VisibleRows To GameHeight
+                    If M(r, c) > 0 Then d = M(r, c): Exit For
+                Next
+                _PutImage (left + c * Size, 719 - Size), Nums&, 0, (d * Size, 2 * Size)-(d * Size + Size - 1, 3 * Size - 1)
+            End If
         Next
 
         'Scrollbar
@@ -138,6 +186,7 @@ Sub Game
 
         'Table
         Locate 10, 10: Print "Available:"; av
+        Locate 20, 10: Print "scroll:"; scroll
 
         _Display
 
@@ -152,10 +201,16 @@ Sub Game
         k$ = InKey$
         If k$ = kLeft$ Or k$ = "o" Then Cc = Cc - 1: If Cc < 0 Then Cc = 0
         If k$ = kRight$ Or k$ = "p" Then Cc = Cc + 1: If Cc > GameWidth - 1 Then Cc = GameWidth - 1
-        If k$ = kUp$ Or k$ = "q" Then Cr = Cr - 1: If Cr < 0 Then Cr = 0
-        If k$ = kDown$ Or k$ = "a" Then Cr = Cr + 1: If Cr > GameHeight - 1 Then Cr = GameHeight - 1
+        If k$ = kUp$ Or k$ = "q" Then Cr = Cr - 1
+        If k$ = kPgUp$ Or k$ = "w" Then Cr = Cr - VisibleRows
+        If Cr < 0 Then Cr = 0
+        If k$ = kDown$ Or k$ = "a" Then Cr = Cr + 1
+        If k$ = kPgDn$ Or k$ = "s" Then Cr = Cr + VisibleRows
+        If Cr > GameHeight - 1 Then Cr = GameHeight - 1
+        If k$ = kHome$ Or k$ = "W" Then Cr = 0
+        If k$ = kEnd$ Or k$ = "S" Then Cr = GameHeight - 1
         If k$ = kEsc$ Then ext = -1
-        If k$ = " " Then
+        If k$ = " " Or k$ = "0" Then
             If Not sel Then
                 'First select
                 If M(Cr, Cc) > 0 Then sr = Cr: sc = Cc: sel = True
@@ -178,8 +233,8 @@ Sub Game
         End If
 
         'Debug...
-        'If k$ = kEnter$ Then r = Rewrite
-        'If Len(k$) > 0 Then Print Asc(Mid$(k$, 1, 1)),Asc(Mid$(k$, 2, 1)):end
+        If k$ = kEnter$ Then r = Rewrite
+        'If Len(k$) > 0 Then Print Asc(Mid$(k$, 1, 1)), Asc(Mid$(k$, 2, 1)): End
 
     Loop While Not ext
 End Sub
@@ -200,23 +255,23 @@ Function CheckPare (r1, c1, r2, c2)
 
     'String
     r = rf
-    c = cf
+    C = cf
     ex = False
     Do
-        c = c + 1
-        If c > GameWidth - 1 Then c = 0: r = r + 1
-        If r = rt And c = ct Then CheckPare = True: Exit Function
-        If M(r, c) > 0 Then ex = True
+        C = C + 1
+        If C > GameWidth - 1 Then C = 0: r = r + 1
+        If r = rt And C = ct Then CheckPare = True: Exit Function
+        If M(r, C) > 0 Then ex = True
     Loop While Not ex
 
     'Column
     r = rf
-    c = cf
+    C = cf
     ex = False
     Do
         r = r + 1
-        If r = rt And c = ct Then CheckPare = True: Exit Function
-        If M(r, c) > 0 Or c <> ct Then ex = True
+        If r = rt And C = ct Then CheckPare = True: Exit Function
+        If M(r, C) > 0 Or C <> ct Then ex = True
     Loop While Not ex
 
     CheckPare = False
@@ -228,30 +283,30 @@ Function Available
 
     'String
     r = 0
-    c = 0
-    d = 0
+    C = 0
+    D = 0
     Do
-        If d = 0 Then
-            If M(r, c) > 0 Then d = M(r, c)
+        If D = 0 Then
+            If M(r, C) > 0 Then D = M(r, C)
         Else
-            If M(r, c) > 0 Then
-                If M(r, c) = d Or M(r, c) + d = 10 Then cn = cn + 1 Else d = M(r, c)
+            If M(r, C) > 0 Then
+                If M(r, C) = D Or M(r, C) + D = 10 Then cn = cn + 1 Else D = M(r, C)
             End If
         End If
-        c = c + 1
-        If c > GameWidth - 1 Then c = 0: r = r + 1
+        C = C + 1
+        If C > GameWidth - 1 Then C = 0: r = r + 1
     Loop While r < GameHeight
 
     'Column
-    For c = 0 To GameWidth - 1
+    For C = 0 To GameWidth - 1
         r = 0
-        d = 0
+        D = 0
         Do
-            If d = 0 Then
-                If M(r, c) > 0 Then d = M(r, c)
+            If D = 0 Then
+                If M(r, C) > 0 Then D = M(r, C)
             Else
-                If M(r, c) > 0 Then
-                    If M(r, c) = d Or M(r, c) + d = 10 Then cn = cn + 1 Else d = M(r, c)
+                If M(r, C) > 0 Then
+                    If M(r, C) = D Or M(r, C) + D = 10 Then cn = cn + 1 Else D = M(r, C)
                 End If
             End If
             r = r + 1
@@ -285,13 +340,23 @@ Function Rewrite
     Do
         If M(r, c) > 0 Then
             cw = cw + 1
-            If cw > GameWidth - 1 Then cw = 0: rw = rw + 1
+            If cw > GameWidth - 1 Then
+                cw = 0
+                rw = rw + 1
+                Nm(rw) = LastRow
+                LastRow = LastRow + 1
+                Cn(rw) = 0
+            End If
             If rw > MaxRows - 1 Then Rewrite = False: Exit Function
             M(rw, cw) = M(r, c)
+            lr = r
         End If
         c = c + 1
         If c > GameWidth - 1 Then c = 0: r = r + 1
     Loop Until r = rt And c = ct
+    For r = 0 To lr
+        Cn(r) = Cn(r) + 1
+    Next
     GameHeight = rw + 1
     Rewrite = True
 End Function
