@@ -223,6 +223,7 @@ Sub Game
                     If CheckPare(Cr, Cc, sr, sc) Then
                         M(Cr, Cc) = 0
                         M(sr, sc) = 0
+                        Collapse
                     End If
                     sel = False
 
@@ -240,6 +241,9 @@ Sub Game
 End Sub
 
 Function CheckPare (r1, c1, r2, c2)
+    'Debug
+    CheckPare = True: Exit Function
+
     If M(r1, c1) <> M(r2, c2) And M(r1, c1) + M(r2, c2) <> 10 Then CheckPare = False: Exit Function
     If r1 * GameWidth + c1 < r2 * GameWidth + c2 Then
         rf = r1
@@ -360,6 +364,25 @@ Function Rewrite
     GameHeight = rw + 1
     Rewrite = True
 End Function
+
+Sub Collapse
+    For r = GameHeight - 1 To 0 Step -1
+        p = True
+        For c = 0 To GameWidth - 1
+            If M(r, c) <> 0 Then p = False: Exit For
+        Next
+        If p Then
+            For r2 = r To GameHeight - 1
+                For c = 0 To GameWidth - 1
+                    M(r2, c) = M(r2 + 1, c)
+                Next
+                Nm(r2) = Nm(r2 + 1)
+                Cn(r2) = Cn(r2 + 1)
+            Next
+            GameHeight = GameHeight - 1
+        End If
+    Next
+End Sub
 
 Sub GameOver
     _AutoDisplay
