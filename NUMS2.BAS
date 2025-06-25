@@ -23,8 +23,15 @@ Dim Shared kPgUp$: kPgUp$ = Chr$(0) + Chr$(73)
 Dim Shared kPgDn$: kPgDn$ = Chr$(0) + Chr$(81)
 'Dim Shared kbs$: kbs$ = Chr$(8)
 
+Type ScrollBarT
+    AN As Integer
+    Left As Integer
+    Height As Integer
+    Bright As Integer
+End Type
+
 Type ExpAnimation
-    A As Integer
+    AN As Integer
     X As Single
     Y As Single
     Xt As Single
@@ -82,7 +89,7 @@ Sub GameInit
     r = 0
     C = 0
     LastRow = 1
-    For D = 1 To 19 '19
+    For D = 1 To 199 '19
         s$ = Str$(D)
         s$ = Right$(s$, Len(s$) - 1)
         ok = True
@@ -112,12 +119,13 @@ Sub Game
     scroll = 0 'Scroll Shift
     left = 1280 / 2 - Size * GameWidth / 2 'GameField coordinates
     top = Size
-    sbl = left + GameWidth * Size + 2 'ScrollBar coordinates
-    sbg = 720 - Size * 2 - 1
     av = Available
     an = 0 'Animation frame
-    ans = 0 'Animation ScrollBas
-    brs = 0 'Bright ScrollBar
+    Dim ScrollBar As ScrollBarT
+    ScrollBar.AN = 0
+    ScrollBar.Left = left + GameWidth * Size + 2
+    ScrollBar.Height = 720 - Size * 2 - 1
+    ScrollBar.Bright = 0
     Do
         'Background
         _Limit 60
@@ -129,7 +137,7 @@ Sub Game
         If scroll < Cr - VisibleRows + Border + 1 Then scroll = Cr - VisibleRows + Border + 1
         If scroll > GameHeight - VisibleRows Then scroll = GameHeight - VisibleRows
         If scroll < 0 Then scroll = 0
-        If oldscroll <> scroll Then ans = 1
+        If oldscroll <> scroll Then ScrollBar.AN = 1
 
         'Cursor
         _PutImage (left + Cc * Size, top + Cr * Size - scroll * Size), Cursor&, 0, (an, 0)-(an + Size - 1, Size - 1)
@@ -184,21 +192,7 @@ Sub Game
         Next
 
         'Scrollbar
-        If GameHeight > VisibleRows Then
-            l = VisibleRows / GameHeight * sbg
-            t = Size + scroll / GameHeight * sbg
-            If ans > 0 Then brs = brs + 10
-            If brs > 512 Then ans = -1
-            If ans < 0 Then brs = brs - 5
-            If brs < 0 Then ans = 0
-            br = brs
-            If br > 255 Then br = 255
-            col& = _RGBA32(255, 255, 255, br / 2)
-            Line (sbl, t + 1)-(sbl, t + l - 1), col&
-            Line (sbl + 1, t)-(sbl + 1, t + l), col&
-            Line (sbl + 2, t)-(sbl + 2, t + l), col&
-            Line (sbl + 3, t + 1)-(sbl + 3, t + l - 1), col&
-        End If
+        DrawScrollbar ScrollBar, scroll
 
         'Table
         Locate 10, 10: Print "Available:"; av
@@ -207,7 +201,7 @@ Sub Game
         'Check Available and rewrite
         If av = 0 Then
             For i = 0 To MaxExpPices
-                ExpAns(i).A = 0
+                ExpAns(i).AN = 0
             Next
             If Not Rewrite Then GameOver: ext = True
             av = Available
@@ -215,11 +209,11 @@ Sub Game
 
         'Explode Animation
         For i = 0 To MaxExpPices
-            If ExpAns(i).A > 0 Then
+            If ExpAns(i).AN > 0 Then
                 x = ExpAns(i).X
                 y = ExpAns(i).Y + ExpAns(i).Fall
-                Line (x, y)-(x + 2, y + 2), _RGBA(255, 255, 255, ExpAns(i).A), BF
-                ExpAns(i).A = ExpAns(i).A - 3
+                Line (x, y)-(x + 2, y + 2), _RGBA(255, 255, 255, ExpAns(i).AN), BF
+                ExpAns(i).AN = ExpAns(i).AN - 3
                 ExpAns(i).X = ExpAns(i).X + ExpAns(i).Xt
                 ExpAns(i).Y = ExpAns(i).Y + ExpAns(i).Yt
                 ExpAns(i).Fall = ExpAns(i).Fall * 1.1
@@ -227,7 +221,6 @@ Sub Game
         Next
 
         _Display
-
 
         'Keyboard
         k$ = InKey$
@@ -253,27 +246,10 @@ Sub Game
                 Else
                     'Match
                     If CheckPare(Cr, Cc, sr, sc) Then
-                        M(Cr, Cc) = 0
                         M(sr, sc) = 0
-
-                        For i = 1 To 15
-                            ExpAns(ExpAnN).A = 255
-                            ExpAns(ExpAnN).X = left + Cc * Size + Size / 2 + Rnd * 20 - 10
-                            ExpAns(ExpAnN).Y = top + (Cr - scroll) * Size + Size / 2 + Rnd * 20 - 10
-                            ExpAns(ExpAnN).Xt = Rnd * 6 - 3
-                            ExpAns(ExpAnN).Yt = Rnd * 6 - 3
-                            ExpAns(ExpAnN).Fall = 5
-                            ExpAnN = ExpAnN + 1
-                            If ExpAnN > MaxExpPices Then ExpAnN = 0
-                            ExpAns(ExpAnN).A = 255
-                            ExpAns(ExpAnN).X = left + sc * Size + Size / 2 + Rnd * 20 - 10
-                            ExpAns(ExpAnN).Y = top + (sr - scroll) * Size + Size / 2 + Rnd * 20 - 10
-                            ExpAns(ExpAnN).Xt = Rnd * 6 - 3
-                            ExpAns(ExpAnN).Yt = Rnd * 6 - 3
-                            ExpAns(ExpAnN).Fall = 5
-                            ExpAnN = ExpAnN + 1
-                            If ExpAnN > MaxExpPices Then ExpAnN = 0
-                        Next
+                        M(Cr, Cc) = 0
+                        AddExplode left + sc * Size, top + (sr - scroll) * Size
+                        AddExplode left + Cc * Size, top + (Cr - scroll) * Size
                         Collapse
                     End If
                     sel = False
@@ -291,7 +267,24 @@ Sub Game
     Loop While Not ext
 End Sub
 
-Function CheckPare (r1, c1, r2, c2)
+Sub DrawScrollbar (bar As ScrollBarT, scroll As Integer)
+    If GameHeight <= VisibleRows Or bar.AN = 0 Then Exit Sub
+    l = VisibleRows / GameHeight * bar.Height
+    t = Size + scroll / GameHeight * bar.Height
+    If bar.AN > 0 Then bar.Bright = bar.Bright + 10
+    If bar.Bright > 512 Then bar.AN = -1
+    If bar.AN < 0 Then bar.Bright = bar.Bright - 5
+    If bar.Bright < 0 Then bar.AN = 0
+    br = bar.Bright
+    If br > 255 Then br = 255
+    col& = _RGBA32(255, 255, 255, br / 2)
+    Line (bar.Left, t + 1)-(bar.Left, t + l - 1), col&
+    Line (bar.Left + 1, t)-(bar.Left + 1, t + l), col&
+    Line (bar.Left + 2, t)-(bar.Left + 2, t + l), col&
+    Line (bar.Left + 3, t + 1)-(bar.Left + 3, t + l - 1), col&
+End Sub
+
+Function CheckPare (r1 As Integer, c1 As Integer, r2 As Integer, c2 As Integer)
     'Debug
     CheckPare = True: Exit Function
 
@@ -439,4 +432,17 @@ Sub GameOver
     _AutoDisplay
     Locate 20, 60
     Print "Game Over"
+End Sub
+
+Sub AddExplode (x As Single, y As Single)
+    For i = 1 To 15
+        ExpAns(ExpAnN).AN = 255
+        ExpAns(ExpAnN).X = x + Size / 2 + Rnd * 20 - 10
+        ExpAns(ExpAnN).Y = y + Size / 2 + Rnd * 20 - 10
+        ExpAns(ExpAnN).Xt = Rnd * 6 - 3
+        ExpAns(ExpAnN).Yt = Rnd * 6 - 3
+        ExpAns(ExpAnN).Fall = 5
+        ExpAnN = ExpAnN + 1
+        If ExpAnN > MaxExpPices Then ExpAnN = 0
+    Next
 End Sub
