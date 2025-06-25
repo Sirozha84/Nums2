@@ -6,8 +6,11 @@ Const Size = 24
 Const MaxRows = 100
 Const MaxColumns = 9
 Const VisibleRows = 28
-Const Border = 10
+Const Border = 9
+Const MaxExpPices = 100
 'Const ColWhite = _RGB32(255, 255, 255)
+
+'KeyCodes
 Dim Shared kLeft$: kLeft$ = Chr$(0) + Chr$(75)
 Dim Shared kRight$: kRight$ = Chr$(0) + Chr$(77)
 Dim Shared kUp$: kUp$ = Chr$(0) + Chr$(72)
@@ -20,21 +23,34 @@ Dim Shared kPgUp$: kPgUp$ = Chr$(0) + Chr$(73)
 Dim Shared kPgDn$: kPgDn$ = Chr$(0) + Chr$(81)
 'Dim Shared kbs$: kbs$ = Chr$(8)
 
-Dim Shared M(MaxRows, MaxColumns) 'Main Field
-Dim Shared Nm(MaxRows) 'Row Nums
-Dim Shared Cn(MaxRows) 'Rewrites Count
-Dim Shared GameWidth 'Gzme size
-Dim Shared GameHeight
-Dim Shared Cr 'Cursor
-Dim Shared Cc
-Dim Shared LastRow
+Type ExpAnimation
+    A As Integer
+    X As Single
+    Y As Single
+    Xt As Single
+    Yt As Single
+    Fall As Single
+End Type
 
+'InGame Vars
+Dim Shared M(MaxRows, MaxColumns) As Integer 'Main Field
+Dim Shared Nm(MaxRows) As Integer 'Row Nums
+Dim Shared Cn(MaxRows) As Integer 'Rewrites Count
+Dim Shared GameWidth As Integer 'Game size
+Dim Shared GameHeight As Integer
+Dim Shared Cr As Integer 'Cursor
+Dim Shared Cc As Integer
+Dim Shared LastRow As Integer
+
+'Graphics
 Dim Shared Nums&
 Dim Shared Background&
 Dim Shared Cursor&
 Dim Shared Digits&
 
-
+'Other
+Dim Shared ExpAns(MaxExpPices) As ExpAnimation
+Dim Shared ExpAnN As Integer
 
 Init
 GameInit
@@ -188,14 +204,30 @@ Sub Game
         Locate 10, 10: Print "Available:"; av
         Locate 20, 10: Print "scroll:"; scroll
 
-        _Display
-
-
         'Check Available and rewrite
         If av = 0 Then
+            For i = 0 To MaxExpPices
+                ExpAns(i).A = 0
+            Next
             If Not Rewrite Then GameOver: ext = True
             av = Available
         End If
+
+        'Explode Animation
+        For i = 0 To MaxExpPices
+            If ExpAns(i).A > 0 Then
+                x = ExpAns(i).X
+                y = ExpAns(i).Y + ExpAns(i).Fall
+                Line (x, y)-(x + 2, y + 2), _RGBA(255, 255, 255, ExpAns(i).A), BF
+                ExpAns(i).A = ExpAns(i).A - 3
+                ExpAns(i).X = ExpAns(i).X + ExpAns(i).Xt
+                ExpAns(i).Y = ExpAns(i).Y + ExpAns(i).Yt
+                ExpAns(i).Fall = ExpAns(i).Fall * 1.1
+            End If
+        Next
+
+        _Display
+
 
         'Keyboard
         k$ = InKey$
@@ -223,6 +255,25 @@ Sub Game
                     If CheckPare(Cr, Cc, sr, sc) Then
                         M(Cr, Cc) = 0
                         M(sr, sc) = 0
+
+                        For i = 1 To 15
+                            ExpAns(ExpAnN).A = 255
+                            ExpAns(ExpAnN).X = left + Cc * Size + Size / 2 + Rnd * 20 - 10
+                            ExpAns(ExpAnN).Y = top + (Cr - scroll) * Size + Size / 2 + Rnd * 20 - 10
+                            ExpAns(ExpAnN).Xt = Rnd * 6 - 3
+                            ExpAns(ExpAnN).Yt = Rnd * 6 - 3
+                            ExpAns(ExpAnN).Fall = 5
+                            ExpAnN = ExpAnN + 1
+                            If ExpAnN > MaxExpPices Then ExpAnN = 0
+                            ExpAns(ExpAnN).A = 255
+                            ExpAns(ExpAnN).X = left + sc * Size + Size / 2 + Rnd * 20 - 10
+                            ExpAns(ExpAnN).Y = top + (sr - scroll) * Size + Size / 2 + Rnd * 20 - 10
+                            ExpAns(ExpAnN).Xt = Rnd * 6 - 3
+                            ExpAns(ExpAnN).Yt = Rnd * 6 - 3
+                            ExpAns(ExpAnN).Fall = 5
+                            ExpAnN = ExpAnN + 1
+                            If ExpAnN > MaxExpPices Then ExpAnN = 0
+                        Next
                         Collapse
                     End If
                     sel = False
@@ -260,23 +311,23 @@ Function CheckPare (r1, c1, r2, c2)
     'String
     r = rf
     C = cf
-    ex = False
+    Ex = False
     Do
         C = C + 1
         If C > GameWidth - 1 Then C = 0: r = r + 1
         If r = rt And C = ct Then CheckPare = True: Exit Function
-        If M(r, C) > 0 Then ex = True
-    Loop While Not ex
+        If M(r, C) > 0 Then Ex = True
+    Loop While Not Ex
 
     'Column
     r = rf
     C = cf
-    ex = False
+    Ex = False
     Do
         r = r + 1
         If r = rt And C = ct Then CheckPare = True: Exit Function
-        If M(r, C) > 0 Or C <> ct Then ex = True
-    Loop While Not ex
+        If M(r, C) > 0 Or C <> ct Then Ex = True
+    Loop While Not Ex
 
     CheckPare = False
 
