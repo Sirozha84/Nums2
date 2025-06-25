@@ -23,6 +23,12 @@ Dim Shared kPgUp$: kPgUp$ = Chr$(0) + Chr$(73)
 Dim Shared kPgDn$: kPgDn$ = Chr$(0) + Chr$(81)
 'Dim Shared kbs$: kbs$ = Chr$(8)
 
+Type Cell
+    R As Integer
+    C As Integer
+    Enable As Integer
+End Type
+
 Type ScrollBarT
     AN As Integer
     Left As Integer
@@ -45,8 +51,10 @@ Dim Shared Nm(MaxRows) As Integer 'Row Nums
 Dim Shared Cn(MaxRows) As Integer 'Rewrites Count
 Dim Shared GameWidth As Integer 'Game size
 Dim Shared GameHeight As Integer
-Dim Shared Cr As Integer 'Cursor
-Dim Shared Cc As Integer
+Dim Shared Cur As Cell
+Dim Shared Sel As Cell
+Dim Shared Scroll As Integer
+Dim Shared ScrollBar As ScrollBarT
 Dim Shared LastRow As Integer
 
 'Graphics
@@ -107,21 +115,21 @@ Sub GameInit
             Next
         End If
     Next
-    Cc = 0
-    Cr = 0
+    Cur.R = 0
+    Cur.C = 0
 End Sub
 
 Sub Game
     ext = 0 'Exit flag
-    sel = False 'First select
-    sr = 0 'Selected item
-    sc = 0
-    scroll = 0 'Scroll Shift
+    Sel.R = 0
+    Sel.C = 0
+    Sel.Enable = False
+    Scroll = 0 'Scroll Shift
     left = 1280 / 2 - Size * GameWidth / 2 'GameField coordinates
     top = Size
     av = Available
     an = 0 'Animation frame
-    Dim ScrollBar As ScrollBarT
+
     ScrollBar.AN = 0
     ScrollBar.Left = left + GameWidth * Size + 2
     ScrollBar.Height = 720 - Size * 2 - 1
@@ -132,71 +140,28 @@ Sub Game
         _PutImage (0, 0), Background&
 
         'Calculating
-        oldscroll = scroll
-        If scroll > Cr - Border Then scroll = Cr - Border
-        If scroll < Cr - VisibleRows + Border + 1 Then scroll = Cr - VisibleRows + Border + 1
-        If scroll > GameHeight - VisibleRows Then scroll = GameHeight - VisibleRows
-        If scroll < 0 Then scroll = 0
-        If oldscroll <> scroll Then ScrollBar.AN = 1
+        oldscroll = Scroll
+        If Scroll > Cur.R - Border Then Scroll = Cur.R - Border
+        If Scroll < Cur.R - VisibleRows + Border + 1 Then Scroll = Cur.R - VisibleRows + Border + 1
+        If Scroll > GameHeight - VisibleRows Then Scroll = GameHeight - VisibleRows
+        If Scroll < 0 Then Scroll = 0
+        If oldscroll <> Scroll Then ScrollBar.AN = 1
 
         'Cursor
-        _PutImage (left + Cc * Size, top + Cr * Size - scroll * Size), Cursor&, 0, (an, 0)-(an + Size - 1, Size - 1)
+        _PutImage (left + Cur.C * Size, top + Cur.R * Size - Scroll * Size), Cursor&, 0, (an, 0)-(an + Size - 1, Size - 1)
         an = an + 1
         If an > Size Then an = 0
 
         'GameField
-        For r = 0 To VisibleRows - 1
-            For c = 0 To GameWidth - 1
-                If M(r, c) >= 0 Then
-                    sx = M(r + scroll, c) * Size
-                    If sel And c = sc And r = sr - scroll Then s = 1 Else s = 0
-                    _PutImage (left + c * Size, top + r * Size), Nums&, 0, (sx, s * Size)-(sx + Size - 1, s * Size + Size - 1)
-                End If
-            Next
-            If M(r + scroll, 0) >= 0 Then
-                'Num
-                d$ = Str$(Nm(r + scroll))
-                l = Len(d$)
-                For i = 2 To l
-                    n = Val(Mid$(d$, i, 1))
-                    _PutImage (left - (l - i) * 8 - 17, top + r * Size + 7), Digits&, 0, (n * 8, 0)-(n * 8 + 7, 9)
-                Next
-                'Count
-                If Cn(r + scroll) > 0 Then
-                    d$ = Str$(Cn(r + scroll))
-                    l = Len(d$)
-                    For i = 2 To l
-                        n = Val(Mid$(d$, i, 1))
-                        _PutImage (sbl + i * 8 - 7, top + r * Size + 7), Digits&, 0, (n * 8, 0)-(n * 8 + 7, 9)
-                    Next
-                End If
-            End If
-        Next
+        DrawGameField left, top
 
-        'Tips
-        For c = 0 To GameWidth - 1
-            If scroll > 0 Then
-                d = 0
-                For r = scroll - 1 To 0 Step -1
-                    If M(r, c) > 0 Then d = M(r, c): Exit For
-                Next
-                _PutImage (left + c * Size, 0), Nums&, 0, (d * Size, 2 * Size)-(d * Size + Size - 1, 3 * Size - 1)
-            End If
-            If scroll < GameHeight - VisibleRows Then
-                d = 0
-                For r = scroll + VisibleRows To GameHeight
-                    If M(r, c) > 0 Then d = M(r, c): Exit For
-                Next
-                _PutImage (left + c * Size, 719 - Size), Nums&, 0, (d * Size, 2 * Size)-(d * Size + Size - 1, 3 * Size - 1)
-            End If
-        Next
 
         'Scrollbar
-        DrawScrollbar ScrollBar, scroll
+        DrawScrollbar
 
         'Table
         Locate 10, 10: Print "Available:"; av
-        Locate 20, 10: Print "scroll:"; scroll
+        Locate 20, 10: Print "scroll:"; Scroll
 
         'Check Available and rewrite
         If av = 0 Then
@@ -224,35 +189,37 @@ Sub Game
 
         'Keyboard
         k$ = InKey$
-        If k$ = kLeft$ Or k$ = "o" Then Cc = Cc - 1: If Cc < 0 Then Cc = 0
-        If k$ = kRight$ Or k$ = "p" Then Cc = Cc + 1: If Cc > GameWidth - 1 Then Cc = GameWidth - 1
-        If k$ = kUp$ Or k$ = "q" Then Cr = Cr - 1
-        If k$ = kPgUp$ Or k$ = "w" Then Cr = Cr - VisibleRows
-        If Cr < 0 Then Cr = 0
-        If k$ = kDown$ Or k$ = "a" Then Cr = Cr + 1
-        If k$ = kPgDn$ Or k$ = "s" Then Cr = Cr + VisibleRows
-        If Cr > GameHeight - 1 Then Cr = GameHeight - 1
-        If k$ = kHome$ Or k$ = "W" Then Cr = 0
-        If k$ = kEnd$ Or k$ = "S" Then Cr = GameHeight - 1
+        If k$ = kLeft$ Or k$ = "o" Then Cur.C = Cur.C - 1
+        If k$ = kRight$ Or k$ = "p" Then Cur.C = Cur.C + 1
+        If k$ = kUp$ Or k$ = "q" Then Cur.R = Cur.R - 1
+        If k$ = kPgUp$ Or k$ = "w" Then Cur.R = Cur.R - VisibleRows
+        If k$ = kDown$ Or k$ = "a" Then Cur.R = Cur.R + 1
+        If k$ = kPgDn$ Or k$ = "s" Then Cur.R = Cur.R + VisibleRows
+        If k$ = kHome$ Or k$ = "W" Then Cur.R = 0
+        If k$ = kEnd$ Or k$ = "S" Then Cur.R = GameHeight - 1
+        If Cur.R < 0 Then Cur.R = 0
+        If Cur.R > GameHeight - 1 Then Cur.R = GameHeight - 1
+        If Cur.C < 0 Then Cur.C = 0
+        If Cur.C > GameWidth - 1 Then Cur.C = GameWidth - 1
         If k$ = kEsc$ Then ext = -1
         If k$ = " " Or k$ = "0" Then
-            If Not sel Then
+            If Not Sel.Enable Then
                 'First select
-                If M(Cr, Cc) > 0 Then sr = Cr: sc = Cc: sel = True
+                If M(Cur.R, Cur.C) > 0 Then Sel.R = Cur.R: Sel.C = Cur.C: Sel.Enable = True
             Else
                 'Second select
-                If sr = Cr And sc = Cc Or M(Cr, Cc) < 1 Then
-                    sel = False
+                If Sel.R = Cur.R And Sel.C = Cur.C Or M(Cur.R, Cur.C) < 1 Then
+                    Sel.Enable = False
                 Else
                     'Match
-                    If CheckPare(Cr, Cc, sr, sc) Then
-                        M(sr, sc) = 0
-                        M(Cr, Cc) = 0
-                        AddExplode left + sc * Size, top + (sr - scroll) * Size
-                        AddExplode left + Cc * Size, top + (Cr - scroll) * Size
-                        Collapse
+                    If CheckPare(Cur.R, Cur.C, Sel.R, Sel.C) Then
+                        M(Sel.R, Sel.C) = 0
+                        M(Cur.R, Cur.C) = 0
+                        AddExplode left + Sel.C * Size, top + (Sel.R - Scroll) * Size
+                        AddExplode left + Cur.C * Size, top + (Cur.R - Scroll) * Size
+                        If Collapse Then ScrollBar.AN = 1
                     End If
-                    sel = False
+                    Sel.Enable = False
 
                     'Recheck Available
                     av = Available
@@ -267,21 +234,69 @@ Sub Game
     Loop While Not ext
 End Sub
 
-Sub DrawScrollbar (bar As ScrollBarT, scroll As Integer)
-    If GameHeight <= VisibleRows Or bar.AN = 0 Then Exit Sub
-    l = VisibleRows / GameHeight * bar.Height
-    t = Size + scroll / GameHeight * bar.Height
-    If bar.AN > 0 Then bar.Bright = bar.Bright + 10
-    If bar.Bright > 512 Then bar.AN = -1
-    If bar.AN < 0 Then bar.Bright = bar.Bright - 5
-    If bar.Bright < 0 Then bar.AN = 0
-    br = bar.Bright
+Sub DrawGameField (left As Integer, top As Integer)
+    'Main Field
+    For r = 0 To VisibleRows - 1
+        For c = 0 To GameWidth - 1
+            If M(r, c) >= 0 Then
+                sx = M(r + Scroll, c) * Size
+                If Sel.Enable And r = Sel.R - Scroll And c = Sel.C Then S = 1 Else S = 0
+                _PutImage (left + c * Size, top + r * Size), Nums&, 0, (sx, S * Size)-(sx + Size - 1, S * Size + Size - 1)
+            End If
+        Next
+        If M(r + Scroll, 0) >= 0 Then
+            'Num
+            d$ = Str$(Nm(r + Scroll))
+            l = Len(d$)
+            For i = 2 To l
+                n = Val(Mid$(d$, i, 1))
+                _PutImage (left - (l - i) * 8 - 17, top + r * Size + 7), Digits&, 0, (n * 8, 0)-(n * 8 + 7, 9)
+            Next
+            'Count
+            If Cn(r + Scroll) > 0 Then
+                d$ = Str$(Cn(r + Scroll))
+                l = Len(d$)
+                For i = 2 To l
+                    n = Val(Mid$(d$, i, 1))
+                    _PutImage (ScrollBar.Left + i * 8 - 7, top + r * Size + 7), Digits&, 0, (n * 8, 0)-(n * 8 + 7, 9)
+                Next
+            End If
+        End If
+    Next
+    'Up and Down Tips
+    For c = 0 To GameWidth - 1
+        If Scroll > 0 Then
+            d = 0
+            For r = Scroll - 1 To 0 Step -1
+                If M(r, c) > 0 Then d = M(r, c): Exit For
+            Next
+            _PutImage (left + c * Size, 0), Nums&, 0, (d * Size, 2 * Size)-(d * Size + Size - 1, 3 * Size - 1)
+        End If
+        If Scroll < GameHeight - VisibleRows Then
+            d = 0
+            For r = Scroll + VisibleRows To GameHeight
+                If M(r, c) > 0 Then d = M(r, c): Exit For
+            Next
+            _PutImage (left + c * Size, 719 - Size), Nums&, 0, (d * Size, 2 * Size)-(d * Size + Size - 1, 3 * Size - 1)
+        End If
+    Next
+End Sub
+
+Sub DrawScrollbar
+    If GameHeight <= VisibleRows Or ScrollBar.AN = 0 Then Exit Sub
+    l = VisibleRows / GameHeight * ScrollBar.Height
+    t = Size + Scroll / GameHeight * ScrollBar.Height
+    If ScrollBar.AN > 0 Then ScrollBar.Bright = ScrollBar.Bright + 10
+    If ScrollBar.Bright > 512 Then ScrollBar.AN = -1
+    If ScrollBar.AN < 0 Then ScrollBar.Bright = ScrollBar.Bright - 5
+    If ScrollBar.Bright < 0 Then ScrollBar.AN = 0
+    br = ScrollBar.Bright
     If br > 255 Then br = 255
     col& = _RGBA32(255, 255, 255, br / 2)
-    Line (bar.Left, t + 1)-(bar.Left, t + l - 1), col&
-    Line (bar.Left + 1, t)-(bar.Left + 1, t + l), col&
-    Line (bar.Left + 2, t)-(bar.Left + 2, t + l), col&
-    Line (bar.Left + 3, t + 1)-(bar.Left + 3, t + l - 1), col&
+    Line (ScrollBar.Left, t + 1)-(ScrollBar.Left, t + l - 1), col&
+    Line (ScrollBar.Left + 1, t)-(ScrollBar.Left + 1, t + l), col&
+    Line (ScrollBar.Left + 2, t)-(ScrollBar.Left + 2, t + l), col&
+    Line (ScrollBar.Left + 3, t + 1)-(ScrollBar.Left + 3, t + l - 1), col&
 End Sub
 
 Function CheckPare (r1 As Integer, c1 As Integer, r2 As Integer, c2 As Integer)
@@ -409,13 +424,15 @@ Function Rewrite
     Rewrite = True
 End Function
 
-Sub Collapse
+Function Collapse
+    Collapse = False
     For r = GameHeight - 1 To 0 Step -1
         p = True
         For c = 0 To GameWidth - 1
             If M(r, c) <> 0 Then p = False: Exit For
         Next
         If p Then
+            Collapse = True
             For r2 = r To GameHeight - 1
                 For c = 0 To GameWidth - 1
                     M(r2, c) = M(r2 + 1, c)
@@ -424,9 +441,10 @@ Sub Collapse
                 Cn(r2) = Cn(r2 + 1)
             Next
             GameHeight = GameHeight - 1
+            If Cur.R > r Then Cur.R = Cur.R - 1
         End If
     Next
-End Sub
+End Function
 
 Sub GameOver
     _AutoDisplay
@@ -437,7 +455,7 @@ End Sub
 Sub AddExplode (x As Single, y As Single)
     For i = 1 To 15
         ExpAns(ExpAnN).AN = 255
-        ExpAns(ExpAnN).X = x + Size / 2 + Rnd * 20 - 10
+        ExpAns(ExpAnN).X = x + Size / 2 + Rnd * 8 - 4
         ExpAns(ExpAnN).Y = y + Size / 2 + Rnd * 20 - 10
         ExpAns(ExpAnN).Xt = Rnd * 6 - 3
         ExpAns(ExpAnN).Yt = Rnd * 6 - 3
