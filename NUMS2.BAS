@@ -29,6 +29,12 @@ Type Cell
     Enable As Integer
 End Type
 
+Type StatsT
+    Score As Integer
+    Stay As Integer
+    Available As Integer
+End Type
+
 Type ScrollBarT
     AN As Integer
     Left As Integer
@@ -53,6 +59,7 @@ Dim Shared GameWidth As Integer 'Game size
 Dim Shared GameHeight As Integer
 Dim Shared Cur As Cell
 Dim Shared Sel As Cell
+Dim Shared Stats As StatsT
 Dim Shared Scroll As Integer
 Dim Shared ScrollBar As ScrollBarT
 Dim Shared LastRow As Integer
@@ -89,16 +96,17 @@ End Sub
 Sub GameInit
     GameWidth = 9
     For r = 0 To MaxRows - 1
-        For C = 0 To MaxColumns - 1
-            M(r, C) = -1
+        For c = 0 To MaxColumns - 1
+            M(r, c) = -1
         Next
     Next
 
+    Stats.Score = 0
     r = 0
-    C = 0
+    c = 0
     LastRow = 1
-    For D = 1 To 199 '19
-        s$ = Str$(D)
+    For d = 1 To 19 '19
+        s$ = Str$(d)
         s$ = Right$(s$, Len(s$) - 1)
         ok = True
         For i = 1 To Len(s$)
@@ -106,12 +114,12 @@ Sub GameInit
         Next
         If ok Then
             For i = 1 To Len(s$)
-                M(r, C) = Val(Mid$(s$, i, 1))
+                M(r, c) = Val(Mid$(s$, i, 1))
                 Nm(r) = LastRow
                 Cn(r) = 0
                 GameHeight = r + 1
-                C = C + 1
-                If C > GameWidth - 1 Then C = 0: r = r + 1: LastRow = LastRow + 1
+                c = c + 1
+                If c > GameWidth - 1 Then c = 0: r = r + 1: LastRow = LastRow + 1
             Next
         End If
     Next
@@ -120,26 +128,26 @@ Sub GameInit
 End Sub
 
 Sub Game
+    left = 1280 / 2 - Size * GameWidth / 2 'GameField coordinates
+    top = Size
     ext = 0 'Exit flag
     Sel.R = 0
     Sel.C = 0
     Sel.Enable = False
     Scroll = 0 'Scroll Shift
-    left = 1280 / 2 - Size * GameWidth / 2 'GameField coordinates
-    top = Size
-    av = Available
     an = 0 'Animation frame
-
     ScrollBar.AN = 0
     ScrollBar.Left = left + GameWidth * Size + 2
     ScrollBar.Height = 720 - Size * 2 - 1
     ScrollBar.Bright = 0
+    AvailableCalc
+    StayCalc
     Do
         'Background
         _Limit 60
         _PutImage (0, 0), Background&
 
-        'Calculating
+        'Calculating scrollbar
         oldscroll = Scroll
         If Scroll > Cur.R - Border Then Scroll = Cur.R - Border
         If Scroll < Cur.R - VisibleRows + Border + 1 Then Scroll = Cur.R - VisibleRows + Border + 1
@@ -155,35 +163,25 @@ Sub Game
         'GameField
         DrawGameField left, top
 
-
         'Scrollbar
         DrawScrollbar
 
-        'Table
-        Locate 10, 10: Print "Available:"; av
-        Locate 20, 10: Print "scroll:"; Scroll
+        'Stats
+        DrawStats
 
-        'Check Available and rewrite
-        If av = 0 Then
-            For i = 0 To MaxExpPices
-                ExpAns(i).AN = 0
-            Next
+        'Check Stats
+        If Stats.Stay = 0 Then
+            ExplodeClear
+            GameWin
+            ext = True
+        ElseIf Stats.Available = 0 Then
+            ExplodeClear
             If Not Rewrite Then GameOver: ext = True
-            av = Available
+            AvailableCalc
         End If
 
-        'Explode Animation
-        For i = 0 To MaxExpPices
-            If ExpAns(i).AN > 0 Then
-                x = ExpAns(i).X
-                y = ExpAns(i).Y + ExpAns(i).Fall
-                Line (x, y)-(x + 2, y + 2), _RGBA(255, 255, 255, ExpAns(i).AN), BF
-                ExpAns(i).AN = ExpAns(i).AN - 3
-                ExpAns(i).X = ExpAns(i).X + ExpAns(i).Xt
-                ExpAns(i).Y = ExpAns(i).Y + ExpAns(i).Yt
-                ExpAns(i).Fall = ExpAns(i).Fall * 1.1
-            End If
-        Next
+        'Explode particles
+        ExplodeDraw
 
         _Display
 
@@ -215,20 +213,22 @@ Sub Game
                     If CheckPare(Cur.R, Cur.C, Sel.R, Sel.C) Then
                         M(Sel.R, Sel.C) = 0
                         M(Cur.R, Cur.C) = 0
-                        AddExplode left + Sel.C * Size, top + (Sel.R - Scroll) * Size
-                        AddExplode left + Cur.C * Size, top + (Cur.R - Scroll) * Size
+                        Stats.Score = Stats.Score + 2
+                        ExplodeAdd left + Sel.C * Size, top + (Sel.R - Scroll) * Size
+                        ExplodeAdd left + Cur.C * Size, top + (Cur.R - Scroll) * Size
                         If Collapse Then ScrollBar.AN = 1
+                        AvailableCalc
+                        StayCalc
                     End If
                     Sel.Enable = False
 
                     'Recheck Available
-                    av = Available
                 End If
             End If
         End If
 
         'Debug...
-        If k$ = kEnter$ Then r = Rewrite
+        If k$ = kEnter$ Then If Not Rewrite Then GameOver: ext = True
         'If Len(k$) > 0 Then Print Asc(Mid$(k$, 1, 1)), Asc(Mid$(k$, 2, 1)): End
 
     Loop While Not ext
@@ -299,6 +299,12 @@ Sub DrawScrollbar
     Line (ScrollBar.Left + 3, t + 1)-(ScrollBar.Left + 3, t + l - 1), col&
 End Sub
 
+Sub DrawStats
+    Locate 10, 10: Print "Available:"; Stats.Available
+    Locate 15, 10: Print "Score:"; Stats.Score
+    Locate 20, 10: Print "Stay:"; Stats.Stay
+End Sub
+
 Function CheckPare (r1 As Integer, c1 As Integer, r2 As Integer, c2 As Integer)
     'Debug
     CheckPare = True: Exit Function
@@ -341,8 +347,8 @@ Function CheckPare (r1 As Integer, c1 As Integer, r2 As Integer, c2 As Integer)
 
 End Function
 
-Function Available
-    cn = 0
+Sub AvailableCalc
+    Stats.Available = 0
 
     'String
     r = 0
@@ -353,7 +359,7 @@ Function Available
             If M(r, C) > 0 Then D = M(r, C)
         Else
             If M(r, C) > 0 Then
-                If M(r, C) = D Or M(r, C) + D = 10 Then cn = cn + 1 Else D = M(r, C)
+                If M(r, C) = D Or M(r, C) + D = 10 Then Stats.Available = Stats.Available + 1 Else D = M(r, C)
             End If
         End If
         C = C + 1
@@ -369,15 +375,22 @@ Function Available
                 If M(r, C) > 0 Then D = M(r, C)
             Else
                 If M(r, C) > 0 Then
-                    If M(r, C) = D Or M(r, C) + D = 10 Then cn = cn + 1 Else D = M(r, C)
+                    If M(r, C) = D Or M(r, C) + D = 10 Then Stats.Available = Stats.Available + 1 Else D = M(r, C)
                 End If
             End If
             r = r + 1
         Loop While r < GameHeight
     Next
+End Sub
 
-    Available = cn
-End Function
+Sub StayCalc
+    Stats.Stay = 0
+    For r = 0 To GameHeight - 1
+        For c = 0 To GameWidth - 1
+            If M(r, c) > 0 Then Stats.Stay = Stats.Stay + 1
+        Next
+    Next
+End Sub
 
 Function Rewrite
     _AutoDisplay
@@ -422,6 +435,7 @@ Function Rewrite
     Next
     GameHeight = rw + 1
     Rewrite = True
+    StayCalc
 End Function
 
 Function Collapse
@@ -446,13 +460,21 @@ Function Collapse
     Next
 End Function
 
-Sub GameOver
-    _AutoDisplay
-    Locate 20, 60
-    Print "Game Over"
+Sub ExplodeDraw
+    For i = 0 To MaxExpPices
+        If ExpAns(i).AN > 0 Then
+            x = ExpAns(i).X
+            y = ExpAns(i).Y + ExpAns(i).Fall
+            Line (x, y)-(x + 2, y + 2), _RGBA(255, 255, 255, ExpAns(i).AN), BF
+            ExpAns(i).AN = ExpAns(i).AN - 3
+            ExpAns(i).X = ExpAns(i).X + ExpAns(i).Xt
+            ExpAns(i).Y = ExpAns(i).Y + ExpAns(i).Yt
+            ExpAns(i).Fall = ExpAns(i).Fall * 1.1
+        End If
+    Next
 End Sub
 
-Sub AddExplode (x As Single, y As Single)
+Sub ExplodeAdd (x As Single, y As Single)
     For i = 1 To 15
         ExpAns(ExpAnN).AN = 255
         ExpAns(ExpAnN).X = x + Size / 2 + Rnd * 8 - 4
@@ -464,3 +486,22 @@ Sub AddExplode (x As Single, y As Single)
         If ExpAnN > MaxExpPices Then ExpAnN = 0
     Next
 End Sub
+
+Sub ExplodeClear
+    For i = 0 To MaxExpPices
+        ExpAns(i).AN = 0
+    Next
+End Sub
+
+Sub GameOver
+    _AutoDisplay
+    Locate 20, 60
+    Print "Game Over"
+End Sub
+
+Sub GameWin
+    _AutoDisplay
+    Locate 20, 60
+    Print "Game Win"
+End Sub
+
