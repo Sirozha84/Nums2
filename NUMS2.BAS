@@ -252,6 +252,11 @@ Sub DrawGameField (left As Integer, top As Integer)
                 n = Val(Mid$(d$, i, 1))
                 _PutImage (left - (l - i) * 8 - 17, top + r * Size + 7), Digits&, 0, (n * 8, 0)-(n * 8 + 7, 9)
             Next
+            If r > 0 Then
+                If Nm(r + Scroll) > Nm(r + Scroll - 1) + 1 Then
+                    Line (left - 51, top + r * Size)-(left - 11, top + r * Size - 1), _RGB(64, 64, 64), BF
+                End If
+            End If
             'Count
             If Cn(r + Scroll) > 0 Then
                 d$ = Str$(Cn(r + Scroll))
