@@ -30,9 +30,12 @@ Type Cell
 End Type
 
 Type StatsT
-    Score As Integer
-    Stay As Integer
-    Available As Integer
+    Score As Integer 'Static
+    Rewrites As Integer 'Static
+    LastRow As Integer 'Static
+    Stay As Integer 'Recalc
+    StayRows As Integer 'Recalc
+    Available As Integer 'Recalc
 End Type
 
 Type ScrollBarT
@@ -62,7 +65,6 @@ Dim Shared Sel As Cell
 Dim Shared Stats As StatsT
 Dim Shared Scroll As Integer
 Dim Shared ScrollBar As ScrollBarT
-Dim Shared LastRow As Integer
 
 'Graphics
 Dim Shared Nums&
@@ -102,9 +104,13 @@ Sub GameInit
     Next
 
     Stats.Score = 0
+    Stats.Rewrites = 0
+    Stats.LastRow = 1
+    Cur.R = 0
+    Cur.C = 0
+
     r = 0
     c = 0
-    LastRow = 1
     For d = 1 To 19 '19
         s$ = Str$(d)
         s$ = Right$(s$, Len(s$) - 1)
@@ -115,16 +121,15 @@ Sub GameInit
         If ok Then
             For i = 1 To Len(s$)
                 M(r, c) = Val(Mid$(s$, i, 1))
-                Nm(r) = LastRow
+                Nm(r) = Stats.LastRow
                 Cn(r) = 0
                 GameHeight = r + 1
                 c = c + 1
-                If c > GameWidth - 1 Then c = 0: r = r + 1: LastRow = LastRow + 1
+                If c > GameWidth - 1 Then c = 0: r = r + 1: Stats.LastRow = Stats.LastRow + 1
             Next
         End If
     Next
-    Cur.R = 0
-    Cur.C = 0
+
 End Sub
 
 Sub Game
@@ -136,6 +141,7 @@ Sub Game
     Sel.Enable = False
     Scroll = 0 'Scroll Shift
     an = 0 'Animation frame
+    rd = 0 'Rewrite delay
     ScrollBar.AN = 0
     ScrollBar.Left = left + GameWidth * Size + 2
     ScrollBar.Height = 720 - Size * 2 - 1
@@ -171,13 +177,20 @@ Sub Game
 
         'Check Stats
         If Stats.Stay = 0 Then
-            ExplodeClear
-            GameWin
-            ext = True
+            rd = rd + 1
+            If rd > 90 Then
+                'rd = 0
+                GameWin
+                ext = True
+            End If
         ElseIf Stats.Available = 0 Then
-            ExplodeClear
-            If Not Rewrite Then GameOver: ext = True
-            AvailableCalc
+            rd = rd + 1
+            If rd > 90 Then
+                rd = 0
+                If Not Rewrite Then GameOver: ext = True
+                AvailableCalc
+                If Stats.Available = 0 Then GameOver: ext = True
+            End If
         End If
 
         'Explode particles
@@ -308,6 +321,8 @@ Sub DrawStats
     Locate 10, 10: Print "Available:"; Stats.Available
     Locate 15, 10: Print "Score:"; Stats.Score
     Locate 20, 10: Print "Stay:"; Stats.Stay
+    Locate 25, 10: Print "Stay Rows:"; Stats.StayRows; "/"; Stats.LastRow - 1
+    Locate 30, 10: Print "Rewrites:"; Stats.Rewrites
 End Sub
 
 Function CheckPare (r1 As Integer, c1 As Integer, r2 As Integer, c2 As Integer)
@@ -390,7 +405,9 @@ End Sub
 
 Sub StayCalc
     Stats.Stay = 0
+    Stats.StayRows = 0
     For r = 0 To GameHeight - 1
+        Stats.StayRows = Stats.StayRows + 1
         For c = 0 To GameWidth - 1
             If M(r, c) > 0 Then Stats.Stay = Stats.Stay + 1
         Next
@@ -424,8 +441,8 @@ Function Rewrite
             If cw > GameWidth - 1 Then
                 cw = 0
                 rw = rw + 1
-                Nm(rw) = LastRow
-                LastRow = LastRow + 1
+                Nm(rw) = Stats.LastRow
+                Stats.LastRow = Stats.LastRow + 1
                 Cn(rw) = 0
             End If
             If rw > MaxRows - 1 Then Rewrite = False: Exit Function
@@ -440,6 +457,7 @@ Function Rewrite
     Next
     GameHeight = rw + 1
     Rewrite = True
+    Stats.Rewrites = Stats.Rewrites + 1
     StayCalc
 End Function
 
@@ -489,12 +507,6 @@ Sub ExplodeAdd (x As Single, y As Single)
         ExpAns(ExpAnN).Fall = 5
         ExpAnN = ExpAnN + 1
         If ExpAnN > MaxExpPices Then ExpAnN = 0
-    Next
-End Sub
-
-Sub ExplodeClear
-    For i = 0 To MaxExpPices
-        ExpAns(i).AN = 0
     Next
 End Sub
 
