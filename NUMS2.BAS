@@ -3,12 +3,12 @@ $Debug
 Const True = -1
 Const False = 0
 Const Size = 24
-Const MaxRows = 100
+Const MaxRows = 999
 Const MaxColumns = 9
 Const VisibleRows = 28
 Const Border = 9
-Const MaxExpPices = 100
-'Const ColWhite = _RGB32(255, 255, 255)
+Const MaxExpPices = 99
+Const MaxStatistic = 99
 
 'KeyCodes
 Dim Shared kLeft$: kLeft$ = Chr$(0) + Chr$(75)
@@ -21,7 +21,7 @@ Dim Shared kHome$: kHome$ = Chr$(0) + Chr$(71)
 Dim Shared kEnd$: kEnd$ = Chr$(0) + Chr$(79)
 Dim Shared kPgUp$: kPgUp$ = Chr$(0) + Chr$(73)
 Dim Shared kPgDn$: kPgDn$ = Chr$(0) + Chr$(81)
-'Dim Shared kbs$: kbs$ = Chr$(8)
+Dim Shared ColGray&: ColGray& = _RGB32(64, 64, 64)
 
 Type Cell
     R As Integer
@@ -65,6 +65,7 @@ Dim Shared Sel As Cell
 Dim Shared Stats As StatsT
 Dim Shared Scroll As Integer
 Dim Shared ScrollBar As ScrollBarT
+Dim Shared Statistic(MaxStatistic) As Integer
 
 'Graphics
 Dim Shared Nums&
@@ -88,7 +89,6 @@ Sub Init
     _Title "Nums2"
     $Resize:Smooth
     Screen _NewImage(1280, 720, 32)
-
     Background& = _LoadImage("Graphics\background.png", 32)
     Nums& = _LoadImage("Graphics\nums.png", 32)
     Cursor& = _LoadImage("Graphics\cursor.png", 32)
@@ -129,7 +129,9 @@ Sub GameInit
             Next
         End If
     Next
-
+    For i = 0 To MaxStatistic
+        Statistic(i) = 0
+    Next
 End Sub
 
 Sub Game
@@ -259,26 +261,13 @@ Sub DrawGameField (left As Integer, top As Integer)
         Next
         If M(r + Scroll, 0) >= 0 Then
             'Num
-            d$ = Str$(Nm(r + Scroll))
-            l = Len(d$)
-            For i = 2 To l
-                n = Val(Mid$(d$, i, 1))
-                _PutImage (left - (l - i) * 8 - 17, top + r * Size + 7), Digits&, 0, (n * 8, 0)-(n * 8 + 7, 9)
-            Next
+            DrawNum left - 10, top + r * Size + 7, Nm(r + Scroll), 1
             If r > 0 Then
-                If Nm(r + Scroll) > Nm(r + Scroll - 1) + 1 Then
-                    Line (left - 51, top + r * Size)-(left - 11, top + r * Size - 1), _RGB(64, 64, 64), BF
-                End If
+                If Nm(r + Scroll) > Nm(r + Scroll - 1) + 1 Then _
+                    Line (left - 51, top + r * Size)-(left - 11, top + r * Size - 1), ColGray&, BF
             End If
             'Count
-            If Cn(r + Scroll) > 0 Then
-                d$ = Str$(Cn(r + Scroll))
-                l = Len(d$)
-                For i = 2 To l
-                    n = Val(Mid$(d$, i, 1))
-                    _PutImage (ScrollBar.Left + i * 8 - 7, top + r * Size + 7), Digits&, 0, (n * 8, 0)-(n * 8 + 7, 9)
-                Next
-            End If
+            If Cn(r + Scroll) > 0 Then DrawNum left + GameWidth * Size + 10, top + r * Size + 7, Cn(r + Scroll), 0
         End If
     Next
     'Up and Down Tips
@@ -323,6 +312,30 @@ Sub DrawStats
     Locate 20, 10: Print "Stay:"; Stats.Stay
     Locate 25, 10: Print "Stay Rows:"; Stats.StayRows; "/"; Stats.LastRow - 1
     Locate 30, 10: Print "Rewrites:"; Stats.Rewrites
+    DrawStatistic 800, 300, 400, 200
+End Sub
+
+Sub DrawStatistic (x, y, w, h)
+    Line (x, y)-(x + w, y + h), ColGray&, B
+    col& = _RGB(255, 255, 255)
+    max = 0
+    For i = 0 To MaxStatistic
+        If max < Statistic(i) Then max = Statistic(i)
+    Next
+    m = Int((max - 1) / 20) * 20 + 20
+    If m < 20 Then m = 20
+    For i = 0 To 1 Step 0.25
+        Line (x - 4, y + h * i)-(x + w, y + h * i), ColGray&
+        DrawNum x - 6, y + h * i - 5, m * (1 - i), 1
+    Next
+
+    For i = 0 To MaxStatistic - 1
+        Line (x + i / MaxStatistic * w, y + h - Statistic(i)/m*h)- _
+            (x + (i + 1) / MaxStatistic * w, y + h - Statistic(i + 1)/m*h), col&
+    Next
+    '    DrawNum x, y, max, 0
+    '   DrawNum x + w, y, m, 1
+    'DrawNum x + w / 2, y, m, 2
 End Sub
 
 Function CheckPare (r1 As Integer, c1 As Integer, r2 As Integer, c2 As Integer)
@@ -419,7 +432,10 @@ Function Rewrite
     Locate 20, 60
     Print "No more maches... Rewrite..."
     _Delay 1
-
+    For i = 0 To MaxStatistic - 1
+        Statistic(i) = Statistic(i + 1)
+    Next
+    Statistic(MaxStatistic) = Stats.Stay
 
     'Find end point
     rt = GameHeight - 1
@@ -522,3 +538,20 @@ Sub GameWin
     Print "Game Win"
 End Sub
 
+'c - 0-left, 1-right, 2-centre
+
+Sub DrawNum (x, y, n, c)
+    d$ = Str$(n)
+    d$ = Right$(d$, Len(d$) - 1)
+    l = Len(d$)
+    For i = 0 To l - 1
+        n = Val(Mid$(d$, i + 1, 1))
+        If c = 0 Then
+            _PutImage (x + i * 8, y), Digits&, 0, (n * 8, 0)-(n * 8 + 7, 9)
+        ElseIf c = 1 Then
+            _PutImage (x - Len(d$) * 8 + i * 8, y), Digits&, 0, (n * 8, 0)-(n * 8 + 7, 9)
+        Else
+            _PutImage (x - Len(d$) * 4 + i * 8, y), Digits&, 0, (n * 8, 0)-(n * 8 + 7, 9)
+        End If
+    Next
+End Sub
