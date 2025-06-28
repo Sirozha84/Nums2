@@ -23,6 +23,12 @@ Dim Shared kPgUp$: kPgUp$ = Chr$(0) + Chr$(73)
 Dim Shared kPgDn$: kPgDn$ = Chr$(0) + Chr$(81)
 Dim Shared ColGray&: ColGray& = _RGB32(64, 64, 64)
 
+Type ProfileT
+    Name As String
+    Start As String
+    Last As String
+End Type
+
 Type Cell
     R As Integer
     C As Integer
@@ -55,6 +61,7 @@ Type ExpAnimation
 End Type
 
 'InGame Vars
+Dim Shared Profile As ProfileT
 Dim Shared M(MaxRows, MaxColumns) As Integer 'Main Field
 Dim Shared Nm(MaxRows) As Integer 'Row Nums
 Dim Shared Cn(MaxRows) As Integer 'Rewrites Count
@@ -63,6 +70,8 @@ Dim Shared GameHeight As Integer
 Dim Shared Cur As Cell
 Dim Shared Sel As Cell
 Dim Shared Stats As StatsT
+Dim Shared Left As Integer
+Dim Shared Top As Integer
 Dim Shared Scroll As Integer
 Dim Shared ScrollBar As ScrollBarT
 Dim Shared Statistic(MaxStatistic) As Integer
@@ -78,7 +87,8 @@ Dim Shared ExpAns(MaxExpPices) As ExpAnimation
 Dim Shared ExpAnN As Integer
 
 Init
-GameInit
+'NewGame
+LoadGame
 Game
 
 
@@ -95,22 +105,21 @@ Sub Init
     Digits& = _LoadImage("Graphics\digits.png", 32)
 End Sub
 
-Sub GameInit
+Sub NewGame
+    'Profile
+    Profile.Name = "Profile1  "
+    Profile.Start = Date$ + " " + Time$
+    Profile.Last = Date$ + " " + Time$
+    'Field
     GameWidth = 9
     For r = 0 To MaxRows - 1
         For c = 0 To MaxColumns - 1
             M(r, c) = -1
         Next
     Next
-
-    Stats.Score = 0
-    Stats.Rewrites = 0
-    Stats.LastRow = 1
-    Cur.R = 0
-    Cur.C = 0
-
     r = 0
     c = 0
+    Stats.LastRow = 1
     For d = 1 To 19 '19
         s$ = Str$(d)
         s$ = Right$(s$, Len(s$) - 1)
@@ -129,25 +138,130 @@ Sub GameInit
             Next
         End If
     Next
+    'Stats
+    Stats.Score = 0
+    Stats.Rewrites = 0
+    Stats.LastRow = 1
     For i = 0 To MaxStatistic
         Statistic(i) = 0
     Next
+    'Cursor
+    Cur.R = 0
+    Cur.C = 0
+End Sub
+
+Sub LoadGame
+    Dim b As Integer
+    Open "profile1.sav" For Random As 1 Len = 2
+    i = 1
+    'Profile
+    Profile.Name = ""
+    For j = 1 To 10
+        Get 1, i, b: i = i + 1
+        Profile.Name = Profile.Name + Chr$(b)
+    Next
+    Profile.Start = ""
+    For j = 1 To 19
+        Get 1, i, b: i = i + 1
+        Profile.Start = Profile.Start + Chr$(b)
+    Next
+    Profile.Last = ""
+    For j = 1 To 19
+        Get 1, i, b: i = i + 1
+        Profile.Last = Profile.Last + Chr$(b)
+    Next
+    'Field
+    For r = 0 To MaxRows - 1
+        For c = 0 To MaxColumns - 1
+            M(r, c) = -1
+        Next
+    Next
+    Get 1, i, GameHeight: i = i + 1
+    Get 1, i, GameWidth: i = i + 1
+    For r = 0 To GameHeight - 1
+        For c = 0 To GameWidth - 1
+            Get 1, i, M(r, c): i = i + 1
+        Next
+    Next
+    For r = 0 To GameHeight - 1
+        Get 1, i, Nm(r): i = i + 1
+    Next
+    For r = 0 To GameHeight - 1
+        Get 1, i, Cn(r): i = i + 1
+    Next
+    'Stats
+    Get 1, i, Stats.Score: i = i + 1
+    Get 1, i, Stats.Rewrites: i = i + 1
+    Get 1, i, Stats.LastRow: i = i + 1
+    For j = 0 To MaxStatistic
+        Get 1, i, Statistic(j): i = i + 1
+    Next
+    'Cursor
+    Get 1, i, Cur.R: i = i + 1
+    Get 1, i, Cur.C: i = i + 1
+    Close
+End Sub
+
+Sub SaveGame
+    Dim b As Integer
+    Open "profile1.sav" For Random As 1 Len = 2
+    i = 1
+    'Profile
+    For j = 1 To 10
+        b = Asc(Profile.Name, j)
+        Put 1, i, b: i = i + 1
+    Next
+    For j = 1 To 19
+        b = Asc(Profile.Start, j)
+        Put 1, i, b: i = i + 1
+    Next
+    Profile.Last = Date$ + " " + Time$
+    For j = 1 To 19
+        b = Asc(Profile.Last, j)
+        Put 1, i, b: i = i + 1
+    Next
+    'Field
+    Put 1, i, GameHeight: i = i + 1
+    Put 1, i, GameWidth: i = i + 1
+    For r = 0 To GameHeight - 1
+        For c = 0 To GameWidth - 1
+            Put 1, i, M(r, c): i = i + 1
+        Next
+    Next
+    For r = 0 To GameHeight - 1
+        Put 1, i, Nm(r): i = i + 1
+    Next
+    For r = 0 To GameHeight - 1
+        Put 1, i, Cn(r): i = i + 1
+    Next
+    'Stats
+    Put 1, i, Stats.Score: i = i + 1
+    Put 1, i, Stats.Rewrites: i = i + 1
+    Put 1, i, Stats.LastRow: i = i + 1
+    For j = 0 To MaxStatistic
+        Put 1, i, Statistic(j): i = i + 1
+    Next
+    'Cursor
+    Put 1, i, Cur.R: i = i + 1
+    Put 1, i, Cur.C: i = i + 1
+    Close
 End Sub
 
 Sub Game
-    left = 1280 / 2 - Size * GameWidth / 2 'GameField coordinates
-    top = Size
-    ext = 0 'Exit flag
+    Left = 1280 / 2 - Size * GameWidth / 2 'GameField coordinates
+    Top = Size
     Sel.R = 0
     Sel.C = 0
     Sel.Enable = False
+    ScrollBar.AN = 0
+    ScrollBar.Left = Left + GameWidth * Size + 2
+    ScrollBar.Height = 720 - Size * 2 - 1
+    ScrollBar.Bright = 0
     Scroll = 0 'Scroll Shift
     an = 0 'Animation frame
     rd = 0 'Rewrite delay
-    ScrollBar.AN = 0
-    ScrollBar.Left = left + GameWidth * Size + 2
-    ScrollBar.Height = 720 - Size * 2 - 1
-    ScrollBar.Bright = 0
+    ast = 0 'AutoSaveTimer
+    ext = 0 'Exit flag
     AvailableCalc
     StayCalc
     Do
@@ -164,17 +278,12 @@ Sub Game
         If oldscroll <> Scroll Then ScrollBar.AN = 1
 
         'Cursor
-        _PutImage (left + Cur.C * Size, top + Cur.R * Size - Scroll * Size), Cursor&, 0, (an, 0)-(an + Size - 1, Size - 1)
+        _PutImage (Left + Cur.C * Size, Top + Cur.R * Size - Scroll * Size), Cursor&, 0, (an, 0)-(an + Size - 1, Size - 1)
         an = an + 1
         If an > Size Then an = 0
 
-        'GameField
-        DrawGameField left, top
-
-        'Scrollbar
+        DrawGameField Left, Top
         DrawScrollbar
-
-        'Stats
         DrawStats
 
         'Check Stats
@@ -214,39 +323,45 @@ Sub Game
         If Cur.R > GameHeight - 1 Then Cur.R = GameHeight - 1
         If Cur.C < 0 Then Cur.C = 0
         If Cur.C > GameWidth - 1 Then Cur.C = GameWidth - 1
-        If k$ = kEsc$ Then ext = -1
-        If k$ = " " Or k$ = "0" Then
-            If Not Sel.Enable Then
-                'First select
-                If M(Cur.R, Cur.C) > 0 Then Sel.R = Cur.R: Sel.C = Cur.C: Sel.Enable = True
-            Else
-                'Second select
-                If Sel.R = Cur.R And Sel.C = Cur.C Or M(Cur.R, Cur.C) < 1 Then
-                    Sel.Enable = False
-                Else
-                    'Match
-                    If CheckPare(Cur.R, Cur.C, Sel.R, Sel.C) Then
-                        M(Sel.R, Sel.C) = 0
-                        M(Cur.R, Cur.C) = 0
-                        Stats.Score = Stats.Score + 2
-                        ExplodeAdd left + Sel.C * Size, top + (Sel.R - Scroll) * Size
-                        ExplodeAdd left + Cur.C * Size, top + (Cur.R - Scroll) * Size
-                        If Collapse Then ScrollBar.AN = 1
-                        AvailableCalc
-                        StayCalc
-                    End If
-                    Sel.Enable = False
+        If k$ = kEsc$ Then SaveGame: ext = -1
+        If k$ = " " Or k$ = "0" Then Fire
 
-                    'Recheck Available
-                End If
-            End If
-        End If
+        'AautoSave
+        ast = ast + 1
+        If ast > 3600 Then SaveGame: ast = 0
 
         'Debug...
-        If k$ = kEnter$ Then If Not Rewrite Then GameOver: ext = True
+        'If k$ = kEnter$ Then If Not Rewrite Then GameOver: ext = True
         'If Len(k$) > 0 Then Print Asc(Mid$(k$, 1, 1)), Asc(Mid$(k$, 2, 1)): End
 
     Loop While Not ext
+End Sub
+
+Sub Fire
+    If Not Sel.Enable Then
+        'First select
+        If M(Cur.R, Cur.C) > 0 Then Sel.R = Cur.R: Sel.C = Cur.C: Sel.Enable = True
+    Else
+        'Second select
+        If Sel.R = Cur.R And Sel.C = Cur.C Or M(Cur.R, Cur.C) < 1 Then
+            Sel.Enable = False
+        Else
+            'Match
+            If CheckPare(Cur.R, Cur.C, Sel.R, Sel.C) Then
+                M(Sel.R, Sel.C) = 0
+                M(Cur.R, Cur.C) = 0
+                Stats.Score = Stats.Score + 2
+                ExplodeAdd Left + Sel.C * Size, Top + (Sel.R - Scroll) * Size
+                ExplodeAdd Left + Cur.C * Size, Top + (Cur.R - Scroll) * Size
+                If Collapse Then ScrollBar.AN = 1
+                AvailableCalc
+                StayCalc
+            End If
+            Sel.Enable = False
+
+            'Recheck Available
+        End If
+    End If
 End Sub
 
 Sub DrawGameField (left As Integer, top As Integer)
@@ -307,6 +422,9 @@ Sub DrawScrollbar
 End Sub
 
 Sub DrawStats
+    Locate 2, 10: Print Profile.Name
+    Locate 3, 10: Print Profile.Start
+    Locate 4, 10: Print Profile.Last
     Locate 10, 10: Print "Available:"; Stats.Available
     Locate 15, 10: Print "Score:"; Stats.Score
     Locate 20, 10: Print "Stay:"; Stats.Stay
@@ -333,14 +451,11 @@ Sub DrawStatistic (x, y, w, h)
         Line (x + i / MaxStatistic * w, y + h - Statistic(i)/m*h)- _
             (x + (i + 1) / MaxStatistic * w, y + h - Statistic(i + 1)/m*h), col&
     Next
-    '    DrawNum x, y, max, 0
-    '   DrawNum x + w, y, m, 1
-    'DrawNum x + w / 2, y, m, 2
 End Sub
 
 Function CheckPare (r1 As Integer, c1 As Integer, r2 As Integer, c2 As Integer)
     'Debug
-    CheckPare = True: Exit Function
+    'CheckPare = True: Exit Function
 
     If M(r1, c1) <> M(r2, c2) And M(r1, c1) + M(r2, c2) <> 10 Then CheckPare = False: Exit Function
     If r1 * GameWidth + c1 < r2 * GameWidth + c2 Then
@@ -475,6 +590,8 @@ Function Rewrite
     Rewrite = True
     Stats.Rewrites = Stats.Rewrites + 1
     StayCalc
+    Do
+    Loop While InKey$ <> ""
 End Function
 
 Function Collapse
@@ -538,8 +655,7 @@ Sub GameWin
     Print "Game Win"
 End Sub
 
-'c - 0-left, 1-right, 2-centre
-
+'c - Allign: 0-left, 1-right, 2-centre
 Sub DrawNum (x, y, n, c)
     d$ = Str$(n)
     d$ = Right$(d$, Len(d$) - 1)
