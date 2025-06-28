@@ -7,7 +7,7 @@ Const MaxRows = 999
 Const MaxColumns = 9
 Const VisibleRows = 28
 Const Border = 9
-Const MaxExpPices = 99
+Const MaxExpPices = 999
 Const MaxStatistic = 99
 
 'KeyCodes
@@ -141,7 +141,6 @@ Sub NewGame
     'Stats
     Stats.Score = 0
     Stats.Rewrites = 0
-    Stats.LastRow = 1
     For i = 0 To MaxStatistic
         Statistic(i) = 0
     Next
@@ -295,6 +294,8 @@ Sub Game
                 ext = True
             End If
         ElseIf Stats.Available = 0 Then
+            Locate 20, 68
+            Print "No more maches... Rewrite..."
             rd = rd + 1
             If rd > 90 Then
                 rd = 0
@@ -425,12 +426,12 @@ Sub DrawStats
     Locate 2, 10: Print Profile.Name
     Locate 3, 10: Print Profile.Start
     Locate 4, 10: Print Profile.Last
-    Locate 10, 10: Print "Available:"; Stats.Available
     Locate 15, 10: Print "Score:"; Stats.Score
-    Locate 20, 10: Print "Stay:"; Stats.Stay
+    Locate 20, 10: Print "Rewrites:"; Stats.Rewrites
     Locate 25, 10: Print "Stay Rows:"; Stats.StayRows; "/"; Stats.LastRow - 1
-    Locate 30, 10: Print "Rewrites:"; Stats.Rewrites
-    DrawStatistic 800, 300, 400, 200
+    Locate 30, 10: Print "Stay Nums:"; Stats.Stay
+    Locate 30, 120: Print "Available:"; Stats.Available
+    DrawStatistic 850, 200, 400, 200
 End Sub
 
 Sub DrawStatistic (x, y, w, h)
@@ -544,9 +545,6 @@ End Sub
 
 Function Rewrite
     _AutoDisplay
-    Locate 20, 60
-    Print "No more maches... Rewrite..."
-    _Delay 1
     For i = 0 To MaxStatistic - 1
         Statistic(i) = Statistic(i + 1)
     Next
@@ -610,6 +608,10 @@ Function Collapse
                 Nm(r2) = Nm(r2 + 1)
                 Cn(r2) = Cn(r2 + 1)
             Next
+            For c = 0 To GameWidth - 1
+                ExplodeAdd Left + c * Size, Top + (r - Scroll) * Size
+                ExplodeAdd Left + c * Size, Top + (r - Scroll) * Size
+            Next
             GameHeight = GameHeight - 1
             If Cur.R > r Then Cur.R = Cur.R - 1
         End If
@@ -645,14 +647,14 @@ End Sub
 
 Sub GameOver
     _AutoDisplay
-    Locate 20, 60
+    Locate 30, 70
     Print "Game Over"
 End Sub
 
 Sub GameWin
     _AutoDisplay
-    Locate 20, 60
-    Print "Game Win"
+    Locate 30, 70
+    Print "Game Win!"
 End Sub
 
 'c - Allign: 0-left, 1-right, 2-centre
