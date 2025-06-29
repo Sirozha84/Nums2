@@ -77,6 +77,7 @@ Dim Shared ScrollBar As ScrollBarT
 Dim Shared Statistic(MaxStatistic) As Integer
 
 'Graphics
+Dim Shared Font&
 Dim Shared Nums&
 Dim Shared Background&
 Dim Shared Cursor&
@@ -99,6 +100,7 @@ Sub Init
     _Title "Nums2"
     $Resize:Smooth
     Screen _NewImage(1280, 720, 32)
+    Font& = _LoadImage("Graphics\font.png", 32)
     Background& = _LoadImage("Graphics\background.png", 32)
     Nums& = _LoadImage("Graphics\nums.png", 32)
     Cursor& = _LoadImage("Graphics\cursor.png", 32)
@@ -423,14 +425,14 @@ Sub DrawScrollbar
 End Sub
 
 Sub DrawStats
-    Locate 2, 10: Print Profile.Name
-    Locate 3, 10: Print Profile.Start
-    Locate 4, 10: Print Profile.Last
-    Locate 15, 10: Print "Score:"; Stats.Score
-    Locate 20, 10: Print "Rewrites:"; Stats.Rewrites
-    Locate 25, 10: Print "Stay Rows:"; Stats.StayRows; "/"; Stats.LastRow - 1
-    Locate 30, 10: Print "Stay Nums:"; Stats.Stay
-    Locate 30, 120: Print "Available:"; Stats.Available
+    PrintAt 50, 50, Profile.Name
+    PrintAt 50, 100, Profile.Start
+    PrintAt 50, 150, Profile.Last
+    PrintAt 50, 300, "Очки:" + Str$(Stats.Score)
+    PrintAt 50, 350, "Переписано:" + Str$(Stats.Rewrites)
+    PrintAt 50, 400, "Осталось строк:" + Str$(Stats.StayRows) + " из" + Str$(Stats.LastRow - 1)
+    PrintAt 50, 450, "Осталось цифр:" + Str$(Stats.Stay)
+    PrintAt 900, 450, "Доступно:" + Str$(Stats.Available)
     DrawStatistic 850, 200, 400, 200
 End Sub
 
@@ -673,3 +675,17 @@ Sub DrawNum (x, y, n, c)
         End If
     Next
 End Sub
+
+Sub PrintAt (x, y, s$)
+    For i = 0 To Len(s$) - 1
+        c = Asc(Mid$(s$, i + 1, 1))
+        Select Case c
+            Case 32 To 127: n = c - 32
+            Case 192 To 255: n = c - 96
+        End Select
+        xi = (n Mod 32) * 12
+        yi = Int(n / 32) * 24
+        _PutImage (x + i * 12, y), Font&, 0, (xi, yi)-(xi + 11, yi + 23)
+    Next
+End Sub
+
