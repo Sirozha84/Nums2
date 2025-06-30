@@ -263,6 +263,7 @@ Sub Game
     rd = 0 'Rewrite delay
     ast = 0 'AutoSaveTimer
     ext = 0 'Exit flag
+    scrbr = 255
     AvailableCalc
     StayCalc
     Do
@@ -310,6 +311,12 @@ Sub Game
         'Explode particles
         ExplodeDraw
 
+        'FadeIn
+        If scrbr > 0 Then
+            scrbr = scrbr - 8
+            Line (0, 0)-(1279, 719), _RGBA(0, 0, 0, scrbr), BF
+        End If
+
         _Display
 
         'Keyboard
@@ -338,6 +345,15 @@ Sub Game
         'If Len(k$) > 0 Then Print Asc(Mid$(k$, 1, 1)), Asc(Mid$(k$, 2, 1)): End
 
     Loop While Not ext
+
+    'FadeOut
+    PCopy 0, 1
+    For b = 0 To 255 Step 8
+        _Limit 60
+        PCopy 1, 0
+        Line (0, 0)-(1279, 719), _RGBA(0, 0, 0, b), BF
+        _Display
+    Next
 End Sub
 
 Sub Fire
@@ -443,16 +459,22 @@ Sub DrawStatistic (x, y, w, h)
     For i = 0 To MaxStatistic
         If max < Statistic(i) Then max = Statistic(i)
     Next
-    m = Int((max - 1) / 20) * 20 + 20
+    max = max - 1
+    Select Case max
+        Case 0 To 100: m = Int(max / 20) * 20 + 20
+        Case 101 To 1000: m = Int(max / 100) * 100 + 100
+        Case Else: m = Int(max / 1000) * 1000 + 1000
+    End Select
     If m < 20 Then m = 20
     For i = 0 To 1 Step 0.25
         Line (x - 4, y + h * i)-(x + w, y + h * i), ColGray&
         DrawNum x - 6, y + h * i - 5, m * (1 - i), 1
     Next
-
+    Line (x + w, y + h - Statistic(MaxStatistic) / m * h)-(x + w + 4, y + h - Statistic(MaxStatistic) / m * h), ColGray&
+    DrawNum x + w + 6, y + h - Statistic(MaxStatistic) / m * h - 5, Statistic(MaxStatistic), 0
     For i = 0 To MaxStatistic - 1
-        Line (x + i / MaxStatistic * w, y + h - Statistic(i)/m*h)- _
-            (x + (i + 1) / MaxStatistic * w, y + h - Statistic(i + 1)/m*h), col&
+        Line (x + i / MaxStatistic * w, y + h - Statistic(i) / m * h)- _
+            (x + (i + 1) / MaxStatistic * w, y + h - Statistic(i + 1) / m * h), col&
     Next
 End Sub
 
