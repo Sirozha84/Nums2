@@ -33,6 +33,7 @@ Type Cell
     R As Integer
     C As Integer
     Enable As Integer
+    AnyPair As Integer
 End Type
 
 Type StatsT
@@ -149,6 +150,7 @@ Sub NewGame
     'Cursor
     Cur.R = 0
     Cur.C = 0
+    Cur.AnyPair = False
 End Sub
 
 Sub LoadGame
@@ -200,6 +202,7 @@ Sub LoadGame
     'Cursor
     Get 1, i, Cur.R: i = i + 1
     Get 1, i, Cur.C: i = i + 1
+    Get 1, i, Cur.AnyPair: i = i + 1
     Close
 End Sub
 
@@ -245,6 +248,7 @@ Sub SaveGame
     'Cursor
     Put 1, i, Cur.R: i = i + 1
     Put 1, i, Cur.C: i = i + 1
+    Put 1, i, Cur.AnyPair: i = i + 1
     Close
 End Sub
 
@@ -296,7 +300,7 @@ Sub Game
                 GameWin
                 ext = True
             End If
-        ElseIf Stats.Available = 0 Then
+        ElseIf Stats.Available = 0 And Not Cur.AnyPair Then
             Locate 20, 68
             Print "No more maches... Rewrite..."
             rd = rd + 1
@@ -304,7 +308,7 @@ Sub Game
                 rd = 0
                 If Not Rewrite Then GameOver: ext = True
                 AvailableCalc
-                If Stats.Available = 0 Then GameOver: ext = True
+                If Stats.Available = 0 Then Cur.AnyPair = True
             End If
         End If
 
@@ -366,7 +370,7 @@ Sub Fire
             Sel.Enable = False
         Else
             'Match
-            If CheckPare(Cur.R, Cur.C, Sel.R, Sel.C) Then
+            If CheckPair(Cur.R, Cur.C, Sel.R, Sel.C) Then
                 M(Sel.R, Sel.C) = 0
                 M(Cur.R, Cur.C) = 0
                 Stats.Score = Stats.Score + 2
@@ -448,6 +452,7 @@ Sub DrawStats
     PrintAt 50, 350, "Переписано:" + Str$(Stats.Rewrites)
     PrintAt 50, 400, "Осталось строк:" + Str$(Stats.StayRows) + " из" + Str$(Stats.LastRow - 1)
     PrintAt 50, 450, "Осталось цифр:" + Str$(Stats.Stay)
+    If Cur.AnyPair Then PrintAt 50, 600, "Любая пара!"
     PrintAt 900, 450, "Доступно:" + Str$(Stats.Available)
     DrawStatistic 850, 200, 400, 200
 End Sub
@@ -478,11 +483,15 @@ Sub DrawStatistic (x, y, w, h)
     Next
 End Sub
 
-Function CheckPare (r1 As Integer, c1 As Integer, r2 As Integer, c2 As Integer)
-    'Debug
-    'CheckPare = True: Exit Function
+Function CheckPair (r1 As Integer, c1 As Integer, r2 As Integer, c2 As Integer)
+    'AnyPair
+    If Cur.AnyPair Then
+        Cur.AnyPair = False
+        CheckPair = True
+        Exit Function
+    End If
 
-    If M(r1, c1) <> M(r2, c2) And M(r1, c1) + M(r2, c2) <> 10 Then CheckPare = False: Exit Function
+    If M(r1, c1) <> M(r2, c2) And M(r1, c1) + M(r2, c2) <> 10 Then CheckPair = False: Exit Function
     If r1 * GameWidth + c1 < r2 * GameWidth + c2 Then
         rf = r1
         cf = c1
@@ -502,7 +511,7 @@ Function CheckPare (r1 As Integer, c1 As Integer, r2 As Integer, c2 As Integer)
     Do
         C = C + 1
         If C > GameWidth - 1 Then C = 0: r = r + 1
-        If r = rt And C = ct Then CheckPare = True: Exit Function
+        If r = rt And C = ct Then CheckPair = True: Exit Function
         If M(r, C) > 0 Then Ex = True
     Loop While Not Ex
 
@@ -512,11 +521,11 @@ Function CheckPare (r1 As Integer, c1 As Integer, r2 As Integer, c2 As Integer)
     Ex = False
     Do
         r = r + 1
-        If r = rt And C = ct Then CheckPare = True: Exit Function
+        If r = rt And C = ct Then CheckPair = True: Exit Function
         If M(r, C) > 0 Or C <> ct Then Ex = True
     Loop While Not Ex
 
-    CheckPare = False
+    CheckPair = False
 
 End Function
 
