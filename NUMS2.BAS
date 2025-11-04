@@ -13,19 +13,20 @@ Const VisibleRows = 28
 Const Border = 9
 Const MaxExpPices = 999
 Const MaxStatistic = 99
+Const MaxProfiles = 5
 
 'KeyCodes
-Dim Shared kLeft$: kLeft$ = Chr$(0) + Chr$(75)
-Dim Shared kRight$: kRight$ = Chr$(0) + Chr$(77)
-Dim Shared kUp$: kUp$ = Chr$(0) + Chr$(72)
-Dim Shared kDown$: kDown$ = Chr$(0) + Chr$(80)
-Dim Shared kEnter$: kEnter$ = Chr$(13)
-Dim Shared kEsc$: kEsc$ = Chr$(27)
-Dim Shared kHome$: kHome$ = Chr$(0) + Chr$(71)
-Dim Shared kEnd$: kEnd$ = Chr$(0) + Chr$(79)
-Dim Shared kPgUp$: kPgUp$ = Chr$(0) + Chr$(73)
-Dim Shared kPgDn$: kPgDn$ = Chr$(0) + Chr$(81)
-Dim Shared ColGray&: ColGray& = _RGB32(64, 64, 64)
+Dim Shared kLeft As String: kLeft = Chr$(0) + Chr$(75)
+Dim Shared kRight As String: kRight = Chr$(0) + Chr$(77)
+Dim Shared kUp As String: kUp = Chr$(0) + Chr$(72)
+Dim Shared kDown As String: kDown = Chr$(0) + Chr$(80)
+Dim Shared kEnter As String: kEnter = Chr$(13)
+Dim Shared kEsc As String: kEsc = Chr$(27)
+Dim Shared kHome As String: kHome = Chr$(0) + Chr$(71)
+Dim Shared kEnd As String: kEnd = Chr$(0) + Chr$(79)
+Dim Shared kPgUp As String: kPgUp = Chr$(0) + Chr$(73)
+Dim Shared kPgDn As String: kPgDn = Chr$(0) + Chr$(81)
+Dim Shared ColGray: ColGray = _RGB32(64, 64, 64)
 
 Type ProfileT
     Name As String
@@ -68,6 +69,10 @@ Type ExpAnimation
     Fall As Single
 End Type
 
+Dim Shared Fade As Integer 'FadeIn Grade (255 in start, 0 - normal)
+Dim Shared EnableContinue As Integer
+Dim Shared ProfileFile As String
+
 'InGame Vars
 Dim Shared Profile As ProfileT
 Dim Shared M(MaxRows, MaxColumns) As Integer 'Main Field
@@ -95,24 +100,99 @@ Dim Shared Digits
 Dim Shared ExpAns(MaxExpPices) As ExpAnimation
 Dim Shared ExpAnN As Integer
 
+'ProfileFile = "Profile1.sav"
+
 Init
+MainMenu
+
 'NewGame
-LoadGame
-Game
+'LoadGame
+'Game
 
 
 
 
 
 Sub Init
+    'Set Window
     _Title "Nums2"
     $Resize:Smooth
     Screen _NewImage(ScrWidth, ScrHeight, 32)
+    'Load Graphichs
     Font = _LoadImage("Graphics\font.png", 32)
     Background = _LoadImage("Graphics\background.png", 32)
     Nums = _LoadImage("Graphics\nums.png", 32)
     Cursor = _LoadImage("Graphics\cursor.png", 32)
     Digits = _LoadImage("Graphics\digits.png", 32)
+    'CheckProfiles
+    EnableContinue = False
+    For i = 1 To MaxProfiles
+        If _FileExists("Profile" + LTrim$(Str$(i)) + ".sav") Then EnableContinue = True
+    Next
+End Sub
+
+Sub MainMenu
+    ext = False
+    max = 6
+    Dim m(max) As String
+    m(0) = "Продолжить"
+    m(1) = "Новая игра"
+    m(2) = "Настройки"
+    m(3) = "История"
+    m(4) = "Инструкция"
+    m(5) = "Об игре"
+    m(6) = "Выход"
+    k = 1
+    If EnableContinue Then k = 0
+    Fade = 255
+    a = 0
+    Do
+        _Limit 60
+        _PutImage (0, 0), Background
+        PrintAt ScrWidth / 2 - 6 * FntW / 2, 50, "NUMS 2"
+        For i = 0 To 6
+            y = 204 + i * FntH * 2
+            If k = i Then
+        Line (ScrWidth / 2 - 100, y - fnth / 2)-_
+            step(204, FntH * 2-1), _RGBa(84, 97, 252, 128+sin(a)*128), BF
+            End If
+            If i <> 0 Or EnableContinue Then
+                PrintAt ScrWidth / 2 - Len(m(i)) * FntW / 2, y, m(i)
+            End If
+        Next
+        FadeIn
+        _Display
+        a = a + 0.1
+        If a > 6.28 Then a = a - 6.28
+        k$ = InKey$
+        If k$ = kUp Or k$ = "q" Then
+            k = k - 1: If EnableContinue And k < 0 Or Not EnableContinue And k < 1 Then k = max
+            a = 0
+        End If
+        If k$ = kDown$ Or k$ = "a" Then
+            k = k + 1: If k > max Then If EnableContinue Then k = 0 Else k = 1
+            a = 0
+        End If
+        If k$ = kEsc Then k$ = kEnter: k = 6
+        If k$ = kEnter Or k$ = " " Then
+            If k = 1 Then
+                ProfileFile = "Profile1.sav"
+                LoadGame
+                FadeOut
+                Game
+                Fade = 255
+            End If
+            If k = 6 Then ext = True
+        End If
+    Loop While Not ext
+    FadeOut
+    System
+End Sub
+
+Sub LoadProfiles
+    For i = 1 To MaxProfiles
+        If _FileExists("") Then en = True
+    Next
 End Sub
 
 Sub NewGame
@@ -169,7 +249,7 @@ End Sub
 
 Sub LoadGame
     Dim b As Integer
-    Open "profile1.sav" For Random As 1 Len = 4
+    Open ProfileFile For Random As 1 Len = 4
     i = 1
     'Profile
     Profile.Name = ""
@@ -227,8 +307,8 @@ End Sub
 
 Sub SaveGame
     Dim b As Integer
-    Kill "profile1.sav"
-    Open "profile1.sav" For Random As 1 Len = 4
+    Kill ProfileFile
+    Open ProfileFile For Random As 1 Len = 4
     i = 1
     'Profile
     For j = 1 To 10
@@ -292,7 +372,7 @@ Sub Game
     dl = 0 'Delay before messages
     ast = 0 'AutoSaveTimer
     ext = False 'Exit flag
-    scrbr = 255
+    Fade = 255
     tme = Int(Timer)
     AvailableCalc
     StayCalc
@@ -329,8 +409,12 @@ Sub Game
             dl = dl + 1
             If dl > 60 Then
                 dl = 0
-                MsgBox "Ходов больше нет! Переписываем...", 0
-                If Not Rewrite Then GameOver: ext = True
+                If Rewrite Then
+                    MsgBox "Ходов больше нет! Переписываем...", 0
+                Else
+                    MsgBox "Ходов больше нет! Игра проиграна!", 2
+                    ext = True
+                End If
                 AvailableCalc
                 'Check avaliable moves after rewrite
                 If Stats.Available = 0 Then Cur.AnyPair = True
@@ -343,32 +427,25 @@ Sub Game
             End If
         End If
 
-        'Explode particles
         ExplodeDraw
-
-        'FadeIn
-        If scrbr > 0 Then
-            scrbr = scrbr - 8
-            Line (0, 0)-(1279, 719), _RGBA(0, 0, 0, scrbr), BF
-        End If
-
+        FadeIn
         _Display
 
         'Keyboard
         k$ = InKey$
-        If k$ = kLeft$ Or k$ = "o" Then Cur.C = Cur.C - 1
-        If k$ = kRight$ Or k$ = "p" Then Cur.C = Cur.C + 1
-        If k$ = kUp$ Or k$ = "q" Then Cur.R = Cur.R - 1
-        If k$ = kPgUp$ Or k$ = "w" Then Cur.R = Cur.R - VisibleRows
-        If k$ = kDown$ Or k$ = "a" Then Cur.R = Cur.R + 1
-        If k$ = kPgDn$ Or k$ = "s" Then Cur.R = Cur.R + VisibleRows
-        If k$ = kHome$ Or k$ = "W" Then Cur.R = 0
-        If k$ = kEnd$ Or k$ = "S" Then Cur.R = GameHeight - 1
+        If k$ = kLeft Or k$ = "o" Then Cur.C = Cur.C - 1
+        If k$ = kRight Or k$ = "p" Then Cur.C = Cur.C + 1
+        If k$ = kUp Or k$ = "q" Then Cur.R = Cur.R - 1
+        If k$ = kPgUp Or k$ = "w" Then Cur.R = Cur.R - VisibleRows
+        If k$ = kDown Or k$ = "a" Then Cur.R = Cur.R + 1
+        If k$ = kPgDn Or k$ = "s" Then Cur.R = Cur.R + VisibleRows
+        If k$ = kHome Or k$ = "W" Then Cur.R = 0
+        If k$ = kEnd Or k$ = "S" Then Cur.R = GameHeight - 1
         If Cur.R < 0 Then Cur.R = 0
         If Cur.R > GameHeight - 1 Then Cur.R = GameHeight - 1
         If Cur.C < 0 Then Cur.C = 0
         If Cur.C > GameWidth - 1 Then Cur.C = GameWidth - 1
-        If k$ = kEsc$ Then SaveGame: ext = True
+        If k$ = kEsc Then SaveGame: ext = True
         If k$ = " " Or k$ = "0" Then Fire
 
         'AautoSave
@@ -394,15 +471,7 @@ Sub Game
         'If Len(k$) > 0 Then Print Asc(Mid$(k$, 1, 1)), Asc(Mid$(k$, 2, 1)): End
 
     Loop While Not ext
-
-    'FadeOut
-    PCopy 0, 1
-    For b = 0 To 255 Step 8
-        _Limit 60
-        PCopy 1, 0
-        Line (0, 0)-(1279, 719), _RGBA(0, 0, 0, b), BF
-        _Display
-    Next
+    FadeOut
 End Sub
 
 Sub Fire
@@ -726,18 +795,6 @@ Sub ExplodeAdd (x As Single, y As Single)
     Next
 End Sub
 
-Sub GameOver
-    _AutoDisplay
-    Locate 30, 70
-    Print "Game Over"
-End Sub
-
-Sub GameWin
-    _AutoDisplay
-    Locate 30, 70
-    Print "Game Win!"
-End Sub
-
 'c - Allign: 0-left, 1-right, 2-centre
 Sub DrawNum (x, y, n, c)
     d$ = Str$(n)
@@ -800,6 +857,24 @@ Sub DrawWindow (strings, mode)
             c = 1 - i * 0.1
             Line (x1 + i, y1 + i)-(x2 - i, y2 - i), _RGB(r * c, g * c, b * c), BF
         Next
+        _Display
+    Next
+End Sub
+
+Sub FadeIn
+    'FadeIn
+    If Fade > 0 Then
+        Fade = Fade - 8
+        Line (0, 0)-(ScrWidth - 1, ScrHeight - 1), _RGBA(0, 0, 0, Fade), BF
+    End If
+End Sub
+
+Sub FadeOut
+    PCopy 0, 1
+    For b = 0 To 255 Step 8
+        _Limit 60
+        PCopy 1, 0
+        Line (0, 0)-(ScrWidth - 1, ScrHeight - 1), _RGBA(0, 0, 0, b), BF
         _Display
     Next
 End Sub
