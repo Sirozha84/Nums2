@@ -2,7 +2,11 @@ $Debug
 
 Const True = -1
 Const False = 0
-Const Size = 24
+Const ScrWidth = 1280 'Screen Size
+Const ScrHeight = 720
+Const FntW = 12 'Font Size
+Const FntH = 24
+Const Size = 24 'Cells Size
 Const MaxRows = 999
 Const MaxColumns = 9
 Const VisibleRows = 28
@@ -27,7 +31,7 @@ Type ProfileT
     Name As String
     Start As String
     Last As String
-    Score As Integer
+    Score As Long
     Rewrites As Integer
     LastRow As Integer
     Hrs As Integer
@@ -74,18 +78,18 @@ Dim Shared GameHeight As Integer
 Dim Shared Cur As Cell
 Dim Shared Sel As Cell
 Dim Shared Stats As StatsT
-Dim Shared Left As Integer
+Dim Shared Left As Integer 'Point for draw field
 Dim Shared Top As Integer
 Dim Shared Scroll As Integer 'Scroll Shift
 Dim Shared ScrollBar As ScrollBarT
 Dim Shared Statistic(MaxStatistic) As Integer
 
 'Graphics
-Dim Shared Font&
-Dim Shared Nums&
-Dim Shared Background&
-Dim Shared Cursor&
-Dim Shared Digits&
+Dim Shared Font
+Dim Shared Nums
+Dim Shared Background
+Dim Shared Cursor
+Dim Shared Digits
 
 'Other
 Dim Shared ExpAns(MaxExpPices) As ExpAnimation
@@ -103,12 +107,12 @@ Game
 Sub Init
     _Title "Nums2"
     $Resize:Smooth
-    Screen _NewImage(1280, 720, 32)
-    Font& = _LoadImage("Graphics\font.png", 32)
-    Background& = _LoadImage("Graphics\background.png", 32)
-    Nums& = _LoadImage("Graphics\nums.png", 32)
-    Cursor& = _LoadImage("Graphics\cursor.png", 32)
-    Digits& = _LoadImage("Graphics\digits.png", 32)
+    Screen _NewImage(ScrWidth, ScrHeight, 32)
+    Font = _LoadImage("Graphics\font.png", 32)
+    Background = _LoadImage("Graphics\background.png", 32)
+    Nums = _LoadImage("Graphics\nums.png", 32)
+    Cursor = _LoadImage("Graphics\cursor.png", 32)
+    Digits = _LoadImage("Graphics\digits.png", 32)
 End Sub
 
 Sub NewGame
@@ -165,7 +169,7 @@ End Sub
 
 Sub LoadGame
     Dim b As Integer
-    Open "profile1.sav" For Random As 1 Len = 2
+    Open "profile1.sav" For Random As 1 Len = 4
     i = 1
     'Profile
     Profile.Name = ""
@@ -224,7 +228,7 @@ End Sub
 Sub SaveGame
     Dim b As Integer
     Kill "profile1.sav"
-    Open "profile1.sav" For Random As 1 Len = 2
+    Open "profile1.sav" For Random As 1 Len = 4
     i = 1
     'Profile
     For j = 1 To 10
@@ -274,7 +278,7 @@ Sub SaveGame
 End Sub
 
 Sub Game
-    Left = 1280 / 2 - Size * GameWidth / 2 'GameField coordinates
+    Left = ScrWidth / 2 - Size * GameWidth / 2 'GameField coordinates
     Top = Size
     Sel.R = 0
     Sel.C = 0
@@ -282,12 +286,12 @@ Sub Game
     Scroll = 0
     ScrollBar.AN = 0
     ScrollBar.Left = Left + GameWidth * Size + 2
-    ScrollBar.Height = 720 - Size * 2 - 1
+    ScrollBar.Height = ScrHeight - Size * 2 - 1
     ScrollBar.Bright = 0
     an = 0 'Animation frame
-    rd = 0 'Rewrite delay
+    dl = 0 'Delay before messages
     ast = 0 'AutoSaveTimer
-    ext = 0 'Exit flag
+    ext = False 'Exit flag
     scrbr = 255
     tme = Int(Timer)
     AvailableCalc
@@ -295,7 +299,7 @@ Sub Game
     Do
         'Background
         _Limit 60
-        _PutImage (0, 0), Background&
+        _PutImage (0, 0), Background
 
         'Calculating scrollbar
         oldscroll = Scroll
@@ -306,27 +310,26 @@ Sub Game
         If oldscroll <> Scroll Then ScrollBar.AN = 1
 
         'Cursor
-        _PutImage (Left + Cur.C * Size, Top + Cur.R * Size - Scroll * Size), Cursor&, 0, (an, 0)-(an + Size - 1, Size - 1)
+        _PutImage (Left + Cur.C * Size, Top + Cur.R * Size - Scroll * Size), Cursor, 0, (an, 0)-(an + Size - 1, Size - 1)
         an = an + 1
         If an > Size Then an = 0
 
         DrawGameField Left, Top
         DrawScrollbar
-        DrawStats
+        DrawStats an
 
         'Check game status
         If Stats.Stay = 0 Then
-            rd = rd + 1
-            If rd > 90 Then
-                GameWin
+            dl = dl + 1
+            If dl > 60 Then
+                MsgBox "Победа!!!", 1
                 ext = True
             End If
         ElseIf Stats.Available = 0 And Not Cur.AnyPair Then
-            Locate 20, 68
-            Print "No more maches... Rewrite..."
-            rd = rd + 1
-            If rd > 90 Then
-                rd = 0
+            dl = dl + 1
+            If dl > 60 Then
+                dl = 0
+                MsgBox "Ходов больше нет! Переписываем...", 0
                 If Not Rewrite Then GameOver: ext = True
                 AvailableCalc
                 'Check avaliable moves after rewrite
@@ -365,7 +368,7 @@ Sub Game
         If Cur.R > GameHeight - 1 Then Cur.R = GameHeight - 1
         If Cur.C < 0 Then Cur.C = 0
         If Cur.C > GameWidth - 1 Then Cur.C = GameWidth - 1
-        If k$ = kEsc$ Then SaveGame: ext = -1
+        If k$ = kEsc$ Then SaveGame: ext = True
         If k$ = " " Or k$ = "0" Then Fire
 
         'AautoSave
@@ -423,8 +426,6 @@ Sub Fire
                 StayCalc
             End If
             Sel.Enable = False
-
-            'Recheck Available
         End If
     End If
 End Sub
@@ -436,7 +437,7 @@ Sub DrawGameField (left As Integer, top As Integer)
             If M(r, c) >= 0 Then
                 sx = M(r + Scroll, c) * Size
                 If Sel.Enable And r = Sel.R - Scroll And c = Sel.C Then S = 1 Else S = 0
-                _PutImage (left + c * Size, top + r * Size), Nums&, 0, (sx, S * Size)-(sx + Size - 1, S * Size + Size - 1)
+                _PutImage (left + c * Size, top + r * Size), Nums, 0, (sx, S * Size)-(sx + Size - 1, S * Size + Size - 1)
             End If
         Next
         If M(r + Scroll, 0) >= 0 Then
@@ -457,14 +458,14 @@ Sub DrawGameField (left As Integer, top As Integer)
             For r = Scroll - 1 To 0 Step -1
                 If M(r, c) > 0 Then d = M(r, c): Exit For
             Next
-            _PutImage (left + c * Size, 0), Nums&, 0, (d * Size, 2 * Size)-(d * Size + Size - 1, 3 * Size - 1)
+            _PutImage (left + c * Size, 0), Nums, 0, (d * Size, 2 * Size)-(d * Size + Size - 1, 3 * Size - 1)
         End If
         If Scroll < GameHeight - VisibleRows Then
             d = 0
             For r = Scroll + VisibleRows To GameHeight
                 If M(r, c) > 0 Then d = M(r, c): Exit For
             Next
-            _PutImage (left + c * Size, 719 - Size), Nums&, 0, (d * Size, 2 * Size)-(d * Size + Size - 1, 3 * Size - 1)
+            _PutImage (left + c * Size, 719 - Size), Nums, 0, (d * Size, 2 * Size)-(d * Size + Size - 1, 3 * Size - 1)
         End If
     Next
 End Sub
@@ -486,18 +487,23 @@ Sub DrawScrollbar
     Line (ScrollBar.Left + 3, t + 1)-(ScrollBar.Left + 3, t + l - 1), col&
 End Sub
 
-Sub DrawStats
-    PrintAt 50, 250, "Время: " + ToString$(Profile.Hrs) + ":" + ToString$(Profile.Min) + ":" + ToString$(Profile.Sec)
-    PrintAt 50, 300, "Очки:" + Str$(Profile.Score)
-    PrintAt 50, 350, "Переписано:" + Str$(Profile.Rewrites)
-    PrintAt 50, 400, "Осталось строк:" + Str$(Stats.StayRows) + " из" + Str$(Profile.LastRow - 1)
-    PrintAt 50, 450, "Осталось цифр:" + Str$(Stats.Stay)
-    If Cur.AnyPair Then PrintAt 50, 600, "Любая пара!"
-    PrintAt 900, 450, "Доступно:" + Str$(Stats.Available)
-    DrawStatistic 850, 200, 400, 200
-End Sub
+Sub DrawStats (an)
+    'MainStats
+    If Cur.AnyPair And an < 10 Then PrintAt 120, 80, "Доступна любая пара!"
+    PrintAt 50, 228, "         Время: " + _
+        ToString$(Profile.Hrs) + ":" + ToString$(Profile.Min) + ":" + ToString$(Profile.Sec)
+    PrintAt 50, 276, "          Очки:" + Str$(Profile.Score)
+    PrintAt 50, 324, "    Переписано:" + Str$(Profile.Rewrites)
+    PrintAt 50, 372, "Осталось строк:" + Str$(Stats.StayRows) + " из" + Str$(Profile.LastRow - 1)
+    PrintAt 50, 420, " Осталось цифр:" + Str$(Stats.Stay)
+    PrintAt 50, 468, "Ходов доступно:" + Str$(Stats.Available)
 
-Sub DrawStatistic (x, y, w, h)
+    'Statistic
+    PrintAt 850, 228, "Статистика"
+    x = 850
+    y = 276
+    w = 400
+    h = 216
     Line (x, y)-(x + w, y + h), ColGray&, B
     col& = _RGB(255, 255, 255)
     max = 0
@@ -524,6 +530,7 @@ Sub DrawStatistic (x, y, w, h)
 End Sub
 
 Function CheckPair (r1 As Integer, c1 As Integer, r2 As Integer, c2 As Integer)
+
     'AnyPair
     If Cur.AnyPair Then
         Cur.AnyPair = False
@@ -531,6 +538,7 @@ Function CheckPair (r1 As Integer, c1 As Integer, r2 As Integer, c2 As Integer)
         Exit Function
     End If
 
+    'Prepare pair
     If M(r1, c1) <> M(r2, c2) And M(r1, c1) + M(r2, c2) <> 10 Then CheckPair = False: Exit Function
     If r1 * GameWidth + c1 < r2 * GameWidth + c2 Then
         rf = r1
@@ -544,7 +552,7 @@ Function CheckPair (r1 As Integer, c1 As Integer, r2 As Integer, c2 As Integer)
         ct = c1
     End If
 
-    'String
+    'String check
     r = rf
     C = cf
     Ex = False
@@ -555,7 +563,7 @@ Function CheckPair (r1 As Integer, c1 As Integer, r2 As Integer, c2 As Integer)
         If M(r, C) > 0 Then Ex = True
     Loop While Not Ex
 
-    'Column
+    'Column check
     r = rf
     C = cf
     Ex = False
@@ -738,11 +746,11 @@ Sub DrawNum (x, y, n, c)
     For i = 0 To l - 1
         n = Val(Mid$(d$, i + 1, 1))
         If c = 0 Then
-            _PutImage (x + i * 8, y), Digits&, 0, (n * 8, 0)-(n * 8 + 7, 9)
+            _PutImage (x + i * 8, y), Digits, 0, (n * 8, 0)-(n * 8 + 7, 9)
         ElseIf c = 1 Then
-            _PutImage (x - Len(d$) * 8 + i * 8, y), Digits&, 0, (n * 8, 0)-(n * 8 + 7, 9)
+            _PutImage (x - Len(d$) * 8 + i * 8, y), Digits, 0, (n * 8, 0)-(n * 8 + 7, 9)
         Else
-            _PutImage (x - Len(d$) * 4 + i * 8, y), Digits&, 0, (n * 8, 0)-(n * 8 + 7, 9)
+            _PutImage (x - Len(d$) * 4 + i * 8, y), Digits, 0, (n * 8, 0)-(n * 8 + 7, 9)
         End If
     Next
 End Sub
@@ -754,9 +762,9 @@ Sub PrintAt (x, y, s$)
             Case 32 To 127: n = c - 32
             Case 192 To 255: n = c - 96
         End Select
-        xi = (n Mod 32) * 12
-        yi = Int(n / 32) * 24
-        _PutImage (x + i * 12, y), Font&, 0, (xi, yi)-(xi + 11, yi + 23)
+        xi = (n Mod 32) * FntW
+        yi = Int(n / 32) * FntH
+        _PutImage (x + i * FntW, y), Font, 0, (xi, yi)-(xi + FntW - 1, yi + FntH - 1)
     Next
 End Sub
 
@@ -765,3 +773,33 @@ Function ToString$ (i)
     If Len(s$) < 2 Then s$ = "0" + s$
     ToString$ = s$
 End Function
+
+'mode - 0-neutral, 1-good, 2-bad
+Sub MsgBox (m$, mode)
+    PCopy 0, 1
+    DrawWindow 1, mode
+    PrintAt ScrWidth / 2 - Len(m$) * FntW / 2, ScrHeight / 2 - FntH / 2, m$
+    _Display
+    _Delay 1
+    If mode > 0 Then _Delay 3
+    PCopy 1, 0
+End Sub
+
+'mode - 0-neutral, 1-good, 2-bad
+Sub DrawWindow (strings, mode)
+    If mode = 0 Then r = 64: g = 64: b = 64
+    If mode = 1 Then r = 0: g = 128: b = 0
+    If mode = 2 Then r = 128: g = 0: b = 0
+    For s = 0.2 To 1.01 Step 0.1
+        _Limit 60
+        x1 = ScrWidth / 2 - s * FntW * 22
+        y1 = ScrHeight / 2 - s * (strings + 2) * FntH / 2
+        x2 = ScrWidth / 2 + s * FntW * 22
+        y2 = ScrHeight / 2 + s * (strings + 2) * FntH / 2
+        For i = 0 To 7
+            c = 1 - i * 0.1
+            Line (x1 + i, y1 + i)-(x2 - i, y2 - i), _RGB(r * c, g * c, b * c), BF
+        Next
+        _Display
+    Next
+End Sub
