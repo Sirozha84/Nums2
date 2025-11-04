@@ -27,6 +27,12 @@ Type ProfileT
     Name As String
     Start As String
     Last As String
+    Score As Integer
+    Rewrites As Integer
+    LastRow As Integer
+    Hrs As Integer
+    Min As Integer
+    Sec As Integer
 End Type
 
 Type Cell
@@ -37,12 +43,9 @@ Type Cell
 End Type
 
 Type StatsT
-    Score As Integer 'Static
-    Rewrites As Integer 'Static
-    LastRow As Integer 'Static
-    Stay As Integer 'Recalc
-    StayRows As Integer 'Recalc
-    Available As Integer 'Recalc
+    Stay As Integer
+    StayRows As Integer
+    Available As Integer
 End Type
 
 Type ScrollBarT
@@ -73,7 +76,7 @@ Dim Shared Sel As Cell
 Dim Shared Stats As StatsT
 Dim Shared Left As Integer
 Dim Shared Top As Integer
-Dim Shared Scroll As Integer
+Dim Shared Scroll As Integer 'Scroll Shift
 Dim Shared ScrollBar As ScrollBarT
 Dim Shared Statistic(MaxStatistic) As Integer
 
@@ -113,6 +116,15 @@ Sub NewGame
     Profile.Name = "Profile1  "
     Profile.Start = Date$ + " " + Time$
     Profile.Last = Date$ + " " + Time$
+    Profile.Score = 0
+    Profile.Rewrites = 0
+    Profile.Hrs = 0
+    Profile.Min = 0
+    Profile.Sec = 0
+    'Cursor
+    Cur.R = 0
+    Cur.C = 0
+    Cur.AnyPair = False
     'Field
     GameWidth = 9
     For r = 0 To MaxRows - 1
@@ -122,8 +134,8 @@ Sub NewGame
     Next
     r = 0
     c = 0
-    Stats.LastRow = 1
-    For d = 1 To 19 '19
+    Profile.LastRow = 1
+    For d = 1 To 19
         s$ = Str$(d)
         s$ = Right$(s$, Len(s$) - 1)
         ok = True
@@ -133,24 +145,22 @@ Sub NewGame
         If ok Then
             For i = 1 To Len(s$)
                 M(r, c) = Val(Mid$(s$, i, 1))
-                Nm(r) = Stats.LastRow
+                Nm(r) = Profile.LastRow
                 Cn(r) = 0
                 GameHeight = r + 1
                 c = c + 1
-                If c > GameWidth - 1 Then c = 0: r = r + 1: Stats.LastRow = Stats.LastRow + 1
+                If c > GameWidth - 1 Then
+                    c = 0
+                    r = r + 1
+                    Profile.LastRow = Profile.LastRow + 1
+                End If
             Next
         End If
     Next
-    'Stats
-    Stats.Score = 0
-    Stats.Rewrites = 0
+    'Statistic
     For i = 0 To MaxStatistic
         Statistic(i) = 0
     Next
-    'Cursor
-    Cur.R = 0
-    Cur.C = 0
-    Cur.AnyPair = False
 End Sub
 
 Sub LoadGame
@@ -173,6 +183,17 @@ Sub LoadGame
         Get 1, i, b: i = i + 1
         Profile.Last = Profile.Last + Chr$(b)
     Next
+    'Stats
+    Get 1, i, Profile.Score: i = i + 1
+    Get 1, i, Profile.Rewrites: i = i + 1
+    Get 1, i, Profile.LastRow: i = i + 1
+    Get 1, i, Profile.Hrs: i = i + 1
+    Get 1, i, Profile.Min: i = i + 1
+    Get 1, i, Profile.Sec: i = i + 1
+    'Cursor
+    Get 1, i, Cur.R: i = i + 1
+    Get 1, i, Cur.C: i = i + 1
+    Get 1, i, Cur.AnyPair: i = i + 1
     'Field
     For r = 0 To MaxRows - 1
         For c = 0 To MaxColumns - 1
@@ -186,28 +207,23 @@ Sub LoadGame
             Get 1, i, M(r, c): i = i + 1
         Next
     Next
+    'Numbers and counts
     For r = 0 To GameHeight - 1
         Get 1, i, Nm(r): i = i + 1
     Next
     For r = 0 To GameHeight - 1
         Get 1, i, Cn(r): i = i + 1
     Next
-    'Stats
-    Get 1, i, Stats.Score: i = i + 1
-    Get 1, i, Stats.Rewrites: i = i + 1
-    Get 1, i, Stats.LastRow: i = i + 1
+    'Statistic
     For j = 0 To MaxStatistic
         Get 1, i, Statistic(j): i = i + 1
     Next
-    'Cursor
-    Get 1, i, Cur.R: i = i + 1
-    Get 1, i, Cur.C: i = i + 1
-    Get 1, i, Cur.AnyPair: i = i + 1
     Close
 End Sub
 
 Sub SaveGame
     Dim b As Integer
+    Kill "profile1.sav"
     Open "profile1.sav" For Random As 1 Len = 2
     i = 1
     'Profile
@@ -224,6 +240,17 @@ Sub SaveGame
         b = Asc(Profile.Last, j)
         Put 1, i, b: i = i + 1
     Next
+    'Stats
+    Put 1, i, Profile.Score: i = i + 1
+    Put 1, i, Profile.Rewrites: i = i + 1
+    Put 1, i, Profile.LastRow: i = i + 1
+    Put 1, i, Profile.Hrs: i = i + 1
+    Put 1, i, Profile.Min: i = i + 1
+    Put 1, i, Profile.Sec: i = i + 1
+    'Cursor
+    Put 1, i, Cur.R: i = i + 1
+    Put 1, i, Cur.C: i = i + 1
+    Put 1, i, Cur.AnyPair: i = i + 1
     'Field
     Put 1, i, GameHeight: i = i + 1
     Put 1, i, GameWidth: i = i + 1
@@ -232,23 +259,17 @@ Sub SaveGame
             Put 1, i, M(r, c): i = i + 1
         Next
     Next
+    'Numbers and counts
     For r = 0 To GameHeight - 1
         Put 1, i, Nm(r): i = i + 1
     Next
     For r = 0 To GameHeight - 1
         Put 1, i, Cn(r): i = i + 1
     Next
-    'Stats
-    Put 1, i, Stats.Score: i = i + 1
-    Put 1, i, Stats.Rewrites: i = i + 1
-    Put 1, i, Stats.LastRow: i = i + 1
+    'Statistic
     For j = 0 To MaxStatistic
         Put 1, i, Statistic(j): i = i + 1
     Next
-    'Cursor
-    Put 1, i, Cur.R: i = i + 1
-    Put 1, i, Cur.C: i = i + 1
-    Put 1, i, Cur.AnyPair: i = i + 1
     Close
 End Sub
 
@@ -258,16 +279,17 @@ Sub Game
     Sel.R = 0
     Sel.C = 0
     Sel.Enable = False
+    Scroll = 0
     ScrollBar.AN = 0
     ScrollBar.Left = Left + GameWidth * Size + 2
     ScrollBar.Height = 720 - Size * 2 - 1
     ScrollBar.Bright = 0
-    Scroll = 0 'Scroll Shift
     an = 0 'Animation frame
     rd = 0 'Rewrite delay
     ast = 0 'AutoSaveTimer
     ext = 0 'Exit flag
     scrbr = 255
+    tme = Int(Timer)
     AvailableCalc
     StayCalc
     Do
@@ -350,6 +372,20 @@ Sub Game
         ast = ast + 1
         If ast > 3600 Then SaveGame: ast = 0
 
+        'TimeCalc
+        If tme <> Int(Timer) Then
+            tme = Int(Timer)
+            Profile.Sec = Profile.Sec + 1
+            If Profile.Sec > 59 Then
+                Profile.Sec = 0
+                Profile.Min = Profile.Min + 1
+                If Profile.Min > 59 Then
+                    Profile.Min = 0
+                    Profile.Hrs = Profile.Hrs + 1
+                End If
+            End If
+        End If
+
         'Debug...
         'If k$ = kEnter$ Then If Not Rewrite Then GameOver: ext = True
         'If Len(k$) > 0 Then Print Asc(Mid$(k$, 1, 1)), Asc(Mid$(k$, 2, 1)): End
@@ -379,7 +415,7 @@ Sub Fire
             If CheckPair(Cur.R, Cur.C, Sel.R, Sel.C) Then
                 M(Sel.R, Sel.C) = 0
                 M(Cur.R, Cur.C) = 0
-                Stats.Score = Stats.Score + 2
+                Profile.Score = Profile.Score + 2
                 ExplodeAdd Left + Sel.C * Size, Top + (Sel.R - Scroll) * Size
                 ExplodeAdd Left + Cur.C * Size, Top + (Cur.R - Scroll) * Size
                 If Collapse Then ScrollBar.AN = 1
@@ -451,12 +487,10 @@ Sub DrawScrollbar
 End Sub
 
 Sub DrawStats
-    PrintAt 50, 50, Profile.Name
-    PrintAt 50, 100, Profile.Start
-    PrintAt 50, 150, Profile.Last
-    PrintAt 50, 300, "Очки:" + Str$(Stats.Score)
-    PrintAt 50, 350, "Переписано:" + Str$(Stats.Rewrites)
-    PrintAt 50, 400, "Осталось строк:" + Str$(Stats.StayRows) + " из" + Str$(Stats.LastRow - 1)
+    PrintAt 50, 250, "Время: " + ToString$(Profile.Hrs) + ":" + ToString$(Profile.Min) + ":" + ToString$(Profile.Sec)
+    PrintAt 50, 300, "Очки:" + Str$(Profile.Score)
+    PrintAt 50, 350, "Переписано:" + Str$(Profile.Rewrites)
+    PrintAt 50, 400, "Осталось строк:" + Str$(Stats.StayRows) + " из" + Str$(Profile.LastRow - 1)
     PrintAt 50, 450, "Осталось цифр:" + Str$(Stats.Stay)
     If Cur.AnyPair Then PrintAt 50, 600, "Любая пара!"
     PrintAt 900, 450, "Доступно:" + Str$(Stats.Available)
@@ -609,8 +643,8 @@ Function Rewrite
             If cw > GameWidth - 1 Then
                 cw = 0
                 rw = rw + 1
-                Nm(rw) = Stats.LastRow
-                Stats.LastRow = Stats.LastRow + 1
+                Nm(rw) = Profile.LastRow
+                Profile.LastRow = Profile.LastRow + 1
                 Cn(rw) = 0
             End If
             If rw > MaxRows - 1 Then Rewrite = False: Exit Function
@@ -625,7 +659,7 @@ Function Rewrite
     Next
     GameHeight = rw + 1
     Rewrite = True
-    Stats.Rewrites = Stats.Rewrites + 1
+    Profile.Rewrites = Profile.Rewrites + 1
     StayCalc
     Do
     Loop While InKey$ <> ""
@@ -726,3 +760,8 @@ Sub PrintAt (x, y, s$)
     Next
 End Sub
 
+Function ToString$ (i)
+    s$ = LTrim$(Str$(i))
+    If Len(s$) < 2 Then s$ = "0" + s$
+    ToString$ = s$
+End Function
