@@ -292,11 +292,10 @@ Sub Game
         DrawScrollbar
         DrawStats
 
-        'Check Stats
+        'Check game status
         If Stats.Stay = 0 Then
             rd = rd + 1
             If rd > 90 Then
-                'rd = 0
                 GameWin
                 ext = True
             End If
@@ -308,7 +307,14 @@ Sub Game
                 rd = 0
                 If Not Rewrite Then GameOver: ext = True
                 AvailableCalc
+                'Check avaliable moves after rewrite
                 If Stats.Available = 0 Then Cur.AnyPair = True
+                'Check infinitere writes
+                For i = 1 To 3
+                    if Statistic(MaxStatistic) = Statistic(MaxStatistic - i) and _
+                        Statistic(MaxStatistic) = Statistic(MaxStatistic - i - i) then _
+                        Cur.AnyPair = True
+                Next
             End If
         End If
 
