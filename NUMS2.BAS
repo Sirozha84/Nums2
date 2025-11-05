@@ -15,19 +15,6 @@ Const MaxExpPices = 999
 Const MaxStatistic = 99
 Const MaxProfiles = 5
 
-'KeyCodes
-Dim Shared kLeft As String: kLeft = Chr$(0) + Chr$(75)
-Dim Shared kRight As String: kRight = Chr$(0) + Chr$(77)
-Dim Shared kUp As String: kUp = Chr$(0) + Chr$(72)
-Dim Shared kDown As String: kDown = Chr$(0) + Chr$(80)
-Dim Shared kEnter As String: kEnter = Chr$(13)
-Dim Shared kEsc As String: kEsc = Chr$(27)
-Dim Shared kHome As String: kHome = Chr$(0) + Chr$(71)
-Dim Shared kEnd As String: kEnd = Chr$(0) + Chr$(79)
-Dim Shared kPgUp As String: kPgUp = Chr$(0) + Chr$(73)
-Dim Shared kPgDn As String: kPgDn = Chr$(0) + Chr$(81)
-Dim Shared ColGray: ColGray = _RGB32(64, 64, 64)
-
 Type ProfileT
     Name As String
     Start As String
@@ -69,9 +56,10 @@ Type ExpAnimation
     Fall As Single
 End Type
 
+Dim Shared key$
 Dim Shared Fade As Integer 'FadeIn Grade (255 in start, 0 - normal)
-Dim Shared EnableContinue As Integer
 Dim Shared ProfileFile As String
+Dim Shared ColGray: ColGray = _RGB32(64, 64, 64)
 
 'InGame Vars
 Dim Shared Profile As ProfileT
@@ -133,56 +121,50 @@ End Sub
 
 Sub MainMenu
     ext = False
-    max = 6
+    max = 5
     Dim m(max) As String
-    m(0) = "Продолжить"
-    m(1) = "Новая игра"
-    m(2) = "Настройки"
-    m(3) = "История"
-    m(4) = "Инструкция"
-    m(5) = "Об игре"
-    m(6) = "Выход"
-    k = 1
-    If EnableContinue Then k = 0
+    m(0) = "Играть"
+    m(1) = "Настройки"
+    m(2) = "История"
+    m(3) = "Инструкция"
+    m(4) = "Об игре"
+    m(5) = "Выход"
+    k = 0
     Fade = 255
     a = 0
     Do
         _Limit 60
         _PutImage (0, 0), Background
         PrintAt ScrWidth / 2 - 6 * FntW / 2, 50, "NUMS 2"
-        For i = 0 To 6
-            y = 204 + i * FntH * 2
+        For i = 0 To max
+            y = 228 + i * FntH * 2
             If k = i Then
-        Line (ScrWidth / 2 - 100, y - fnth / 2)-_
-            step(204, FntH * 2-1), _RGBa(84, 97, 252, 128+sin(a)*128), BF
+                Line (ScrWidth / 2 - 100, y - fnth / 2)-_
+                    step(204, FntH * 2-1), _RGBa(84, 97, 252, 128+sin(a)*128), BF
             End If
-            If i <> 0 Or EnableContinue Then
-                PrintAt ScrWidth / 2 - Len(m(i)) * FntW / 2, y, m(i)
-            End If
+            PrintAt ScrWidth / 2 - Len(m(i)) * FntW / 2, y, m(i)
         Next
         FadeIn
         _Display
         a = a + 0.1
         If a > 6.28 Then a = a - 6.28
-        k$ = InKey$
-        If k$ = kUp Or k$ = "q" Then
-            k = k - 1: If EnableContinue And k < 0 Or Not EnableContinue And k < 1 Then k = max
-            a = 0
-        End If
-        If k$ = kDown$ Or k$ = "a" Then
-            k = k + 1: If k > max Then If EnableContinue Then k = 0 Else k = 1
-            a = 0
-        End If
-        If k$ = kEsc Then k$ = kEnter: k = 6
-        If k$ = kEnter Or k$ = " " Then
-            If k = 1 Then
+        key$ = InKey$
+        If kUp Then a = 0: k = k - 1: If k < 0 Then k = max
+        If kDown Then a = 0: k = k + 1: If k > max Then k = 0
+        If kEsc Then ext = True
+        If kEnter Then
+            If k = 0 Then
                 ProfileFile = "Profile1.sav"
                 LoadGame
                 FadeOut
                 Game
                 Fade = 255
             End If
-            If k = 6 Then ext = True
+            'if k = 1 then
+            'if k = 2 then
+            'if k = 3 then
+            'if k = 4 then
+            If k = 5 Then ext = True
         End If
     Loop While Not ext
     FadeOut
@@ -432,21 +414,21 @@ Sub Game
         _Display
 
         'Keyboard
-        k$ = InKey$
-        If k$ = kLeft Or k$ = "o" Then Cur.C = Cur.C - 1
-        If k$ = kRight Or k$ = "p" Then Cur.C = Cur.C + 1
-        If k$ = kUp Or k$ = "q" Then Cur.R = Cur.R - 1
-        If k$ = kPgUp Or k$ = "w" Then Cur.R = Cur.R - VisibleRows
-        If k$ = kDown Or k$ = "a" Then Cur.R = Cur.R + 1
-        If k$ = kPgDn Or k$ = "s" Then Cur.R = Cur.R + VisibleRows
-        If k$ = kHome Or k$ = "W" Then Cur.R = 0
-        If k$ = kEnd Or k$ = "S" Then Cur.R = GameHeight - 1
+        key$ = InKey$
+        If kLeft Then Cur.C = Cur.C - 1
+        If kRight Then Cur.C = Cur.C + 1
+        If kUp Then Cur.R = Cur.R - 1
+        If kPgUp Then Cur.R = Cur.R - VisibleRows
+        If kDown Then Cur.R = Cur.R + 1
+        If kPgDn Then Cur.R = Cur.R + VisibleRows
+        If kHome Then Cur.R = 0
+        If kEnd Then Cur.R = GameHeight - 1
         If Cur.R < 0 Then Cur.R = 0
         If Cur.R > GameHeight - 1 Then Cur.R = GameHeight - 1
         If Cur.C < 0 Then Cur.C = 0
         If Cur.C > GameWidth - 1 Then Cur.C = GameWidth - 1
-        If k$ = kEsc Then SaveGame: ext = True
-        If k$ = " " Or k$ = "0" Then Fire
+        If kEsc Then SaveGame: ext = True
+        If kEnter Then Fire
 
         'AautoSave
         ast = ast + 1
@@ -465,10 +447,6 @@ Sub Game
                 End If
             End If
         End If
-
-        'Debug...
-        'If k$ = kEnter$ Then If Not Rewrite Then GameOver: ext = True
-        'If Len(k$) > 0 Then Print Asc(Mid$(k$, 1, 1)), Asc(Mid$(k$, 2, 1)): End
 
     Loop While Not ext
     FadeOut
@@ -590,7 +568,8 @@ Sub DrawStats (an)
         Line (x - 4, y + h * i)-(x + w, y + h * i), ColGray&
         DrawNum x - 6, y + h * i - 5, m * (1 - i), 1
     Next
-    Line (x + w, y + h - Statistic(MaxStatistic) / m * h)-(x + w + 4, y + h - Statistic(MaxStatistic) / m * h), ColGray&
+    Line (x + w, y + h - Statistic(MaxStatistic) / m * h)-_
+        (x + w + 4, y + h - Statistic(MaxStatistic) / m * h), ColGray&
     DrawNum x + w + 6, y + h - Statistic(MaxStatistic) / m * h - 5, Statistic(MaxStatistic), 0
     For i = 0 To MaxStatistic - 1
         Line (x + i / MaxStatistic * w, y + h - Statistic(i) / m * h)- _
@@ -878,3 +857,44 @@ Sub FadeOut
         _Display
     Next
 End Sub
+
+Function kLeft ()
+    kLeft = key$ = Chr$(0) + Chr$(75) Or key$ = "o" Or key$ = "щ"
+End Function
+
+Function kRight ()
+    kRight = key$ = Chr$(0) + Chr$(77) Or key$ = "p" Or key$ = "з"
+End Function
+
+Function kUp ()
+    kUp = key$ = Chr$(0) + Chr$(72) Or key$ = "q" Or key$ = "й"
+End Function
+
+Function kDown ()
+    kDown = key$ = Chr$(0) + Chr$(80) Or key$ = "a" Or key$ = "ф"
+End Function
+
+Function kEnter ()
+    kEnter = key$ = Chr$(13) Or key$ = " " Or key$ = "0"
+End Function
+
+Function kEsc ()
+    kEsc = key$ = Chr$(27)
+End Function
+
+Function kHome ()
+    kHome = key$ = Chr$(0) + Chr$(71) Or key$ = "W" Or key$ = "Ц"
+End Function
+
+Function kEnd ()
+    kEnd = key$ = Chr$(0) + Chr$(79) Or key$ = "S" Or key$ = "Ы"
+End Function
+
+Function kPgUp ()
+    kPgUp = key$ = Chr$(0) + Chr$(73) Or key$ = "w" Or key$ = "ц"
+End Function
+
+Function kPgDn ()
+    kPgDn = key$ = Chr$(0) + Chr$(81) Or key$ = "s" Or key$ = "ы"
+End Function
+
