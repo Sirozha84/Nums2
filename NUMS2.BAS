@@ -56,8 +56,10 @@ Type ExpAnimation
     Fall As Single
 End Type
 
+'Общие переменные для меню
 Dim Shared key$
 Dim Shared Fade As Integer 'FadeIn Grade (255 in start, 0 - normal)
+Dim Shared prs(4) As String 'Список профилей (для выбора в меню)
 Dim Shared ProfileFile As String
 Dim Shared ColGray: ColGray = _RGB32(64, 64, 64)
 
@@ -139,27 +141,20 @@ Sub MainMenu
         For i = 0 To max
             y = 228 + i * FntH * 2
             If k = i Then
-                Line (ScrWidth / 2 - 100, y - fnth / 2)-_
-                    step(204, FntH * 2-1), _RGBa(84, 97, 252, 128+sin(a)*128), BF
+                Line (ScrWidth / 2 - 100, y - FntH / 2)-_
+                    Step(200, FntH * 2 - 1), CurColor~&(a), BF
             End If
             PrintAt ScrWidth / 2 - Len(m(i)) * FntW / 2, y, m(i)
         Next
+        PrintAt ScrWidth / 2 - 26 * FntW / 2, 680, "Enter - выбор, Esc - выход"
         FadeIn
         _Display
-        a = a + 0.1
-        If a > 6.28 Then a = a - 6.28
         key$ = InKey$
         If kUp Then a = 0: k = k - 1: If k < 0 Then k = max
         If kDown Then a = 0: k = k + 1: If k > max Then k = 0
         If kEsc Then ext = True
         If kEnter Then
-            If k = 0 Then
-                ProfileFile = "Profile1.sav"
-                LoadGame
-                FadeOut
-                Game
-                Fade = 255
-            End If
+            If k = 0 Then SelectProfile
             'if k = 1 then
             'if k = 2 then
             'if k = 3 then
@@ -171,9 +166,60 @@ Sub MainMenu
     System
 End Sub
 
+Sub SelectProfile
+    LoadProfiles
+    k = 0
+    a = 0
+    Do
+        _Limit 60
+        _PutImage (0, 0), Background
+        PrintAt ScrWidth / 2 - 14 * FntW / 2, 50, "Выбери профиль"
+
+        For i = 0 To MaxProfiles - 1
+            y = 252 + i * FntH * 2
+            If k = i Then
+                Line (ScrWidth / 2 - 360, y - FntH / 2)-_
+                    Step(740, FntH * 2 - 1), CurColor~&(a), BF
+            End If
+            If prs(i) <> "" Then n$ = prs(i) Else n$ = "Новая игра"
+            PrintAt ScrWidth / 2 - Len(n$) * FntW / 2, y, n$
+        Next
+        PrintAt ScrWidth / 2 - 39 * FntW / 2, 680, "Enter - выбор, Esc - назад, D - удалить"
+        FadeIn
+        _Display
+        key$ = InKey$
+        If kUp Then a = 0: k = k - 1: If k < 0 Then k = MaxProfiles - 1
+        If kDown Then a = 0: k = k + 1: If k > MaxProfiles - 1 Then k = 0
+        If kEsc Then ext = True
+        If kEnter Then
+            ProfileFile = "Profile" + LTrim$(Str$(k + 1)) + ".sav"
+            If prs(k) = "" Then
+                NewGame
+            Else
+                LoadGame
+            End If
+            FadeOut
+            Game
+            Fade = 255
+            ext = True
+        End If
+
+    Loop While Not ext
+    'FadeOut
+
+End Sub
+
 Sub LoadProfiles
-    For i = 1 To MaxProfiles
-        If _FileExists("") Then en = True
+    'На будущее: если в списке есть дырки - сделать сдвиг (переименовать имя файла)
+    For i = 0 To MaxProfiles - 1
+        n$ = "Profile" + LTrim$(Str$(i + 1)) + ".sav"
+        If _FileExists(n$) Then
+            ProfileFile = n$
+            LoadGame
+            prs(i) = Profile.Name + "   " + Profile.Start + " - " + Profile.Last
+        Else
+            prs(i) = ""
+        End If
     Next
 End Sub
 
@@ -289,7 +335,7 @@ End Sub
 
 Sub SaveGame
     Dim b As Integer
-    Kill ProfileFile
+    If _FileExists(ProfileFile) Then Kill ProfileFile
     Open ProfileFile For Random As 1 Len = 4
     i = 1
     'Profile
@@ -841,7 +887,6 @@ Sub DrawWindow (strings, mode)
 End Sub
 
 Sub FadeIn
-    'FadeIn
     If Fade > 0 Then
         Fade = Fade - 8
         Line (0, 0)-(ScrWidth - 1, ScrHeight - 1), _RGBA(0, 0, 0, Fade), BF
@@ -858,43 +903,50 @@ Sub FadeOut
     Next
 End Sub
 
-Function kLeft ()
+'Вычисление цвета курсороа
+Function CurColor~& (a)
+    CurColor~& = _RGBA(84, 97, 252, 128 + Sin(a) * 128)
+    a = a + 0.1
+    If a > 6.28 Then a = a - 6.28
+End Function
+
+Function kLeft
     kLeft = key$ = Chr$(0) + Chr$(75) Or key$ = "o" Or key$ = "щ"
 End Function
 
-Function kRight ()
+Function kRight
     kRight = key$ = Chr$(0) + Chr$(77) Or key$ = "p" Or key$ = "з"
 End Function
 
-Function kUp ()
+Function kUp
     kUp = key$ = Chr$(0) + Chr$(72) Or key$ = "q" Or key$ = "й"
 End Function
 
-Function kDown ()
+Function kDown
     kDown = key$ = Chr$(0) + Chr$(80) Or key$ = "a" Or key$ = "ф"
 End Function
 
-Function kEnter ()
+Function kEnter
     kEnter = key$ = Chr$(13) Or key$ = " " Or key$ = "0"
 End Function
 
-Function kEsc ()
+Function kEsc
     kEsc = key$ = Chr$(27)
 End Function
 
-Function kHome ()
+Function kHome
     kHome = key$ = Chr$(0) + Chr$(71) Or key$ = "W" Or key$ = "Ц"
 End Function
 
-Function kEnd ()
+Function kEnd
     kEnd = key$ = Chr$(0) + Chr$(79) Or key$ = "S" Or key$ = "Ы"
 End Function
 
-Function kPgUp ()
+Function kPgUp
     kPgUp = key$ = Chr$(0) + Chr$(73) Or key$ = "w" Or key$ = "ц"
 End Function
 
-Function kPgDn ()
+Function kPgDn
     kPgDn = key$ = Chr$(0) + Chr$(81) Or key$ = "s" Or key$ = "ы"
 End Function
 
