@@ -1,20 +1,5 @@
 $Debug
 
-Const True = -1
-Const False = 0
-Const ScrWidth = 1280 'Screen Size
-Const ScrHeight = 720
-Const FntW = 12 'Font Size
-Const FntH = 24
-Const Size = 24 'Cells Size
-Const MaxRows = 999
-Const MaxColumns = 9
-Const VisibleRows = 28
-Const Border = 9
-Const MaxExpPices = 999
-Const MaxStatistic = 99
-Const MaxProfiles = 5
-
 Type ProfileT
     Name As String
     Start As String
@@ -47,7 +32,7 @@ Type ScrollBarT
     Bright As Integer
 End Type
 
-Type ExpAnimation
+Type ExpPartT 'Частица взрыва
     AN As Integer
     X As Single
     Y As Single
@@ -56,14 +41,29 @@ Type ExpAnimation
     Fall As Single
 End Type
 
+Const True = -1
+Const False = 0
+Const ScrWidth = 1280 'Screen Size
+Const ScrHeight = 720
+Const FntW = 12 'Font Size
+Const FntH = 24
+Const Size = 24 'Cells Size
+Const MaxRows = 999
+Const MaxColumns = 9
+Const VisibleRows = 28
+Const Border = 9
+Const MaxExpPices = 999 'Максимальное число частиц взрыва
+Const MaxStatistic = 99
+Const MaxProfiles = 5
+
 'Общие переменные для меню
 Dim Shared key$
 Dim Shared Fade As Integer 'FadeIn Grade (255 in start, 0 - normal)
-Dim Shared prs(4) As String 'Список профилей (для выбора в меню)
+ReDim Shared prs(4) As String 'Список профилей (для выбора в меню)
 Dim Shared ProfileFile As String
 Dim Shared ColGray: ColGray = _RGB32(64, 64, 64)
 
-'InGame Vars
+'Внутриигровые переменные
 Dim Shared Profile As ProfileT
 Dim Shared M(MaxRows, MaxColumns) As Integer 'Main Field
 Dim Shared Nm(MaxRows) As Integer 'Row Nums
@@ -78,30 +78,18 @@ Dim Shared Top As Integer
 Dim Shared Scroll As Integer 'Scroll Shift
 Dim Shared ScrollBar As ScrollBarT
 Dim Shared Statistic(MaxStatistic) As Integer
+Dim Shared ExpAns(MaxExpPices) As ExpPartT 'Массив частиц взрыва
+Dim Shared ExpAnN As Integer 'Индекс для следующей частицы
 
-'Graphics
+'Графика
 Dim Shared Font
 Dim Shared Nums
 Dim Shared Background
 Dim Shared Cursor
 Dim Shared Digits
 
-'Other
-Dim Shared ExpAns(MaxExpPices) As ExpAnimation
-Dim Shared ExpAnN As Integer
-
-'ProfileFile = "Profile1.sav"
-
 Init
 MainMenu
-
-'NewGame
-'LoadGame
-'Game
-
-
-
-
 
 Sub Init
     'Set Window
@@ -192,7 +180,7 @@ Sub SelectProfile
         If kDown Then a = 0: k = k + 1: If k > MaxProfiles - 1 Then k = 0
         If kEsc Then ext = True
         If kEnter Then
-            ProfileFile = "Profile" + LTrim$(Str$(k + 1)) + ".sav"
+            ProfileFile = ProFileName(k)
             If prs(k) = "" Then
                 NewGame
             Else
@@ -210,15 +198,16 @@ Sub SelectProfile
 End Sub
 
 Sub LoadProfiles
-    'На будущее: если в списке есть дырки - сделать сдвиг (переименовать имя файла)
+    ReDim prs(MaxProfiles) As String
+    n = 0
     For i = 0 To MaxProfiles - 1
-        n$ = "Profile" + LTrim$(Str$(i + 1)) + ".sav"
+        ProfileFile = ProFileName(n)
+        n$ = ProFileName(i)
         If _FileExists(n$) Then
-            ProfileFile = n$
+            If n <> i Then Name n$ As ProfileFile
             LoadGame
-            prs(i) = Profile.Name + "   " + Profile.Start + " - " + Profile.Last
-        Else
-            prs(i) = ""
+            prs(n) = Profile.Name + "   " + Profile.Start + " - " + Profile.Last
+            n = n + 1
         End If
     Next
 End Sub
@@ -950,3 +939,6 @@ Function kPgDn
     kPgDn = key$ = Chr$(0) + Chr$(81) Or key$ = "s" Or key$ = "ы"
 End Function
 
+Function ProFileName$ (n)
+    ProFileName$ = "Profile" + LTrim$(Str$(n + 1)) + ".sav"
+End Function
