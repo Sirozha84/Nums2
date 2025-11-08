@@ -55,12 +55,14 @@ Const Border = 9
 Const MaxExpPices = 999 'Максимальное число частиц взрыва
 Const MaxStatistic = 99
 Const MaxProfiles = 5
+Const PropFile = "config.sav"
 
 'Общие переменные для меню
 Dim Shared key$
 Dim Shared Fade As Integer 'FadeIn Grade (255 in start, 0 - normal)
 ReDim Shared prs(4) As String 'Список профилей (для выбора в меню)
 Dim Shared ProfileFile As String
+Dim Shared LastName As String
 Dim Shared ColGray: ColGray = _RGB32(64, 64, 64)
 
 'Внутриигровые переменные
@@ -92,21 +94,28 @@ Init
 MainMenu
 
 Sub Init
-    'Set Window
+    'Экран
     _Title "Nums2"
     $Resize:Smooth
     Screen _NewImage(ScrWidth, ScrHeight, 32)
-    'Load Graphichs
+    'Загрузка графики
     Font = _LoadImage("Graphics\font.png", 32)
     Background = _LoadImage("Graphics\background.png", 32)
     Nums = _LoadImage("Graphics\nums.png", 32)
     Cursor = _LoadImage("Graphics\cursor.png", 32)
     Digits = _LoadImage("Graphics\digits.png", 32)
-    'CheckProfiles
-    EnableContinue = False
-    For i = 1 To MaxProfiles
-        If _FileExists("Profile" + LTrim$(Str$(i)) + ".sav") Then EnableContinue = True
-    Next
+    'Загрузка параметров
+    If Not _FileExists(PropFile) Then Exit Sub
+    Open PropFile For Input As #1
+    Input #1, LastName
+    Close #1
+End Sub
+
+'Сохранение настроек
+Sub SaveOptions
+    Open PropFile For Output As #1
+    Write #1, LastName
+    Close #1
 End Sub
 
 Sub MainMenu
@@ -182,16 +191,21 @@ Sub SelectProfile
         If kEnter Then
             ProfileFile = ProFileName(k)
             If prs(k) = "" Then
-                NewGame
+                If NewProfile Then
+                    NewGame
+                    ext = True
+                End If
             Else
                 LoadGame
+                ext = True
             End If
-            FadeOut
-            Game
-            Fade = 255
-            ext = True
+            If ext Then
+                FadeOut
+                Game
+                Fade = 255
+            End If
         End If
-
+        If (key$ = "d" Or key$ = "в") And prs(k) <> "" Then DeleteProfile (ProFileName(k))
     Loop While Not ext
     'FadeOut
 
@@ -212,9 +226,72 @@ Sub LoadProfiles
     Next
 End Sub
 
+Function NewProfile
+    DrawWindow 3, 0
+    PrintAt ScrWidth / 2 - 11 * FntW / 2, 324, "Имя профиля"
+    PCopy 0, 1
+    n$ = LastName
+    x = ScrWidth / 2 - 10 * FntW / 2
+    y = 372
+    a = 0
+    ext = False
+    Do
+        _Limit 60
+        PCopy 1, 0
+        PrintAt x, y, n$
+        Line (x + Len(n$) * FntW, y)-Step(FntW - 1, FntH - 1), CurColor(a), BF
+        _Display
+        key$ = InKey$
+        If key$ <> "" Then
+            If Asc(key$) >= 32 And Len(n$) < 10 Then n$ = n$ + key$: a = 0
+        End If
+        If key$ = Chr$(8) And Len(n$) > 0 Then n$ = Left$(n$, Len(n$) - 1): a = 0
+        If key$ = Chr$(13) Then
+            LastName = n$
+            SaveOptions
+            Do While Len(n$) < 10: n$ = n$ + " ": Loop
+            Profile.Name = n$
+            NewProfile = True
+            ext = True
+        End If
+        If kEsc Then
+            NewProfile = False
+            ext = True
+        End If
+    Loop While Not ext
+End Function
+
+'Диалог удаления профиля
+Sub DeleteProfile (pf$)
+    DrawWindow 3, 0
+    PrintAt ScrWidth / 2 - 8 * FntW / 2, 324, "Уверены?"
+    PCopy 0, 1
+    k = 1
+    x = ScrWidth / 2 - 7 * FntW / 2
+    a = 0
+    ext = False
+    Do
+        _Limit 60
+        PCopy 1, 0
+        Line (x + k * 54 - 18, 360)-Step(60, 47), CurColor(a), BF
+        PrintAt x, 372, "Да  Нет"
+        _Display
+        key$ = InKey$
+        If kLeft Or kRight Then k = 1 - k: a = 0
+        If kEsc Then ext = True
+        If kEnter Then
+            If k = 0 Then
+                Kill pf$
+                LoadProfiles
+            End If
+            ext = True
+        End If
+    Loop While Not ext
+End Sub
+
+'Инициализация новой игры
 Sub NewGame
-    'Profile
-    Profile.Name = "Profile1  "
+    'Профиль
     Profile.Start = Date$ + " " + Time$
     Profile.Last = Date$ + " " + Time$
     Profile.Score = 0
@@ -527,7 +604,7 @@ Sub DrawGameField (left As Integer, top As Integer)
             DrawNum left - 10, top + r * Size + 7, Nm(r + Scroll), 1
             If r > 0 Then
                 If Nm(r + Scroll) > Nm(r + Scroll - 1) + 1 Then _
-                    Line (left - 51, top + r * Size)-(left - 11, top + r * Size - 1), ColGray&, BF
+                    Line (left - 51, top + r * Size)-(left - 11, top + r * Size - 1), ColGray, BF
             End If
             'Count
             If Cn(r + Scroll) > 0 Then DrawNum left + GameWidth * Size + 10, top + r * Size + 7, Cn(r + Scroll), 0
@@ -586,7 +663,7 @@ Sub DrawStats (an)
     y = 276
     w = 400
     h = 216
-    Line (x, y)-(x + w, y + h), ColGray&, B
+    Line (x, y)-(x + w, y + h), ColGray, B
     col& = _RGB(255, 255, 255)
     max = 0
     For i = 0 To MaxStatistic
@@ -600,11 +677,11 @@ Sub DrawStats (an)
     End Select
     If m < 20 Then m = 20
     For i = 0 To 1 Step 0.25
-        Line (x - 4, y + h * i)-(x + w, y + h * i), ColGray&
+        Line (x - 4, y + h * i)-(x + w, y + h * i), ColGray
         DrawNum x - 6, y + h * i - 5, m * (1 - i), 1
     Next
     Line (x + w, y + h - Statistic(MaxStatistic) / m * h)-_
-        (x + w + 4, y + h - Statistic(MaxStatistic) / m * h), ColGray&
+        (x + w + 4, y + h - Statistic(MaxStatistic) / m * h), ColGray
     DrawNum x + w + 6, y + h - Statistic(MaxStatistic) / m * h - 5, Statistic(MaxStatistic), 0
     For i = 0 To MaxStatistic - 1
         Line (x + i / MaxStatistic * w, y + h - Statistic(i) / m * h)- _
