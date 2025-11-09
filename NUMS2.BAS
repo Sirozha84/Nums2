@@ -56,11 +56,12 @@ Const MaxExpPices = 999 'Максимальное число частиц взрыва
 Const MaxStatistic = 99
 Const MaxProfiles = 5
 Const PropFile = "config.sav"
+Const HistFile = "history.sav"
 
 'Общие переменные для меню
 Dim Shared key$
 Dim Shared Fade As Integer 'FadeIn Grade (255 in start, 0 - normal)
-ReDim Shared prs(4) As String 'Список профилей (для выбора в меню)
+Dim Shared prs(MaxProfiles - 1) As String 'Список профилей (для выбора в меню)
 Dim Shared ProfileFile As String
 Dim Shared LastName As String
 Dim Shared ColGray&: ColGray& = _RGB32(64, 64, 64)
@@ -114,7 +115,7 @@ End Sub
 'Сохранение настроек
 Sub SaveOptions
     Open PropFile For Output As #1
-    Write #1, LastName
+    Print #1, LastName
     Close #1
 End Sub
 
@@ -211,27 +212,13 @@ Sub SelectProfile
 
 End Sub
 
-Sub LoadProfiles
-    ReDim prs(MaxProfiles) As String
-    n = 0
-    For i = 0 To MaxProfiles - 1
-        ProfileFile = ProFileName(n)
-        n$ = ProFileName(i)
-        If _FileExists(n$) Then
-            If n <> i Then Name n$ As ProfileFile
-            LoadGame
-            prs(n) = Profile.Name + "   " + Profile.Start + " - " + Profile.Last
-            n = n + 1
-        End If
-    Next
-End Sub
-
+'Диалог создания нового профиля
 Function NewProfile
     DrawWindow 3, 0
-    PrintCn 324, "Имя профиля"
+    PrintLn 0, 1, "Имя профиля"
     PCopy 0, 1
     n$ = LastName
-    x = ScrWidth / 2 - 10 * FntW / 2
+    x = 580
     y = 372
     a = 0
     ext = False
@@ -264,17 +251,16 @@ End Function
 'Диалог удаления профиля
 Sub DeleteProfile (pf$)
     DrawWindow 3, 0
-    PrintCn 324, "Уверены?"
+    PrintLn 0, 1, "Уверены?"
     PCopy 0, 1
     k = 1
-    x = ScrWidth / 2 - 7 * FntW / 2
     a = 0
     ext = False
     Do
         _Limit 60
         PCopy 1, 0
-        Line (x + k * 54 - 18, 360)-Step(60, 47), CurColor(a), BF
-        PrintCn 372, "Да  Нет"
+        Line (580 + k * 54, 360)-Step(60, 47), CurColor(a), BF
+        PrintLn 1, 1, "Да  Нет"
         _Display
         key$ = InKey$
         If kLeft Or kRight Then k = 1 - k: a = 0
@@ -289,168 +275,7 @@ Sub DeleteProfile (pf$)
     Loop While Not ext
 End Sub
 
-'Инициализация новой игры
-Sub NewGame
-    'Профиль
-    Profile.Start = Date$ + " " + Time$
-    Profile.Last = Date$ + " " + Time$
-    Profile.Score = 0
-    Profile.Rewrites = 0
-    Profile.Hrs = 0
-    Profile.Min = 0
-    Profile.Sec = 0
-    'Cursor
-    Cur.R = 0
-    Cur.C = 0
-    Cur.AnyPair = False
-    'Field
-    GameWidth = 9
-    For r = 0 To MaxRows - 1
-        For c = 0 To MaxColumns - 1
-            M(r, c) = -1
-        Next
-    Next
-    r = 0
-    c = 0
-    Profile.LastRow = 1
-    For d = 1 To 19
-        s$ = Str$(d)
-        s$ = Right$(s$, Len(s$) - 1)
-        ok = True
-        For i = 1 To Len(s$)
-            If Mid$(s$, i, 1) = "0" Then ok = False
-        Next
-        If ok Then
-            For i = 1 To Len(s$)
-                M(r, c) = Val(Mid$(s$, i, 1))
-                Nm(r) = Profile.LastRow
-                Cn(r) = 0
-                GameHeight = r + 1
-                c = c + 1
-                If c > GameWidth - 1 Then
-                    c = 0
-                    r = r + 1
-                    Profile.LastRow = Profile.LastRow + 1
-                End If
-            Next
-        End If
-    Next
-    'Statistic
-    For i = 0 To MaxStatistic
-        Statistic(i) = 0
-    Next
-End Sub
-
-Sub LoadGame
-    Dim b As Integer
-    Open ProfileFile For Random As 1 Len = 4
-    i = 1
-    'Profile
-    Profile.Name = ""
-    For j = 1 To 10
-        Get 1, i, b: i = i + 1
-        Profile.Name = Profile.Name + Chr$(b)
-    Next
-    Profile.Start = ""
-    For j = 1 To 19
-        Get 1, i, b: i = i + 1
-        Profile.Start = Profile.Start + Chr$(b)
-    Next
-    Profile.Last = ""
-    For j = 1 To 19
-        Get 1, i, b: i = i + 1
-        Profile.Last = Profile.Last + Chr$(b)
-    Next
-    'Stats
-    Get 1, i, Profile.Score: i = i + 1
-    Get 1, i, Profile.Rewrites: i = i + 1
-    Get 1, i, Profile.LastRow: i = i + 1
-    Get 1, i, Profile.Hrs: i = i + 1
-    Get 1, i, Profile.Min: i = i + 1
-    Get 1, i, Profile.Sec: i = i + 1
-    'Cursor
-    Get 1, i, Cur.R: i = i + 1
-    Get 1, i, Cur.C: i = i + 1
-    Get 1, i, Cur.AnyPair: i = i + 1
-    'Field
-    For r = 0 To MaxRows - 1
-        For c = 0 To MaxColumns - 1
-            M(r, c) = -1
-        Next
-    Next
-    Get 1, i, GameHeight: i = i + 1
-    Get 1, i, GameWidth: i = i + 1
-    For r = 0 To GameHeight - 1
-        For c = 0 To GameWidth - 1
-            Get 1, i, M(r, c): i = i + 1
-        Next
-    Next
-    'Numbers and counts
-    For r = 0 To GameHeight - 1
-        Get 1, i, Nm(r): i = i + 1
-    Next
-    For r = 0 To GameHeight - 1
-        Get 1, i, Cn(r): i = i + 1
-    Next
-    'Statistic
-    For j = 0 To MaxStatistic
-        Get 1, i, Statistic(j): i = i + 1
-    Next
-    Close
-End Sub
-
-Sub SaveGame
-    Dim b As Integer
-    If _FileExists(ProfileFile) Then Kill ProfileFile
-    Open ProfileFile For Random As 1 Len = 4
-    i = 1
-    'Profile
-    For j = 1 To 10
-        b = Asc(Profile.Name, j)
-        Put 1, i, b: i = i + 1
-    Next
-    For j = 1 To 19
-        b = Asc(Profile.Start, j)
-        Put 1, i, b: i = i + 1
-    Next
-    Profile.Last = Date$ + " " + Time$
-    For j = 1 To 19
-        b = Asc(Profile.Last, j)
-        Put 1, i, b: i = i + 1
-    Next
-    'Stats
-    Put 1, i, Profile.Score: i = i + 1
-    Put 1, i, Profile.Rewrites: i = i + 1
-    Put 1, i, Profile.LastRow: i = i + 1
-    Put 1, i, Profile.Hrs: i = i + 1
-    Put 1, i, Profile.Min: i = i + 1
-    Put 1, i, Profile.Sec: i = i + 1
-    'Cursor
-    Put 1, i, Cur.R: i = i + 1
-    Put 1, i, Cur.C: i = i + 1
-    Put 1, i, Cur.AnyPair: i = i + 1
-    'Field
-    Put 1, i, GameHeight: i = i + 1
-    Put 1, i, GameWidth: i = i + 1
-    For r = 0 To GameHeight - 1
-        For c = 0 To GameWidth - 1
-            Put 1, i, M(r, c): i = i + 1
-        Next
-    Next
-    'Numbers and counts
-    For r = 0 To GameHeight - 1
-        Put 1, i, Nm(r): i = i + 1
-    Next
-    For r = 0 To GameHeight - 1
-        Put 1, i, Cn(r): i = i + 1
-    Next
-    'Statistic
-    For j = 0 To MaxStatistic
-        Put 1, i, Statistic(j): i = i + 1
-    Next
-    Close
-End Sub
-
+'Главная процедура игры
 Sub Game
     Left = ScrWidth / 2 - Size * GameWidth / 2 'GameField coordinates
     Top = Size
@@ -497,6 +322,7 @@ Sub Game
             dl = dl + 1
             If dl > 60 Then
                 MsgBox "Победа!!!", 1
+                EndGame True
                 ext = True
             End If
         ElseIf Stats.Available = 0 And Not Cur.AnyPair Then
@@ -507,6 +333,7 @@ Sub Game
                     MsgBox "Ходов больше нет! Переписываем...", 0
                 Else
                     MsgBox "Ходов больше нет! Игра проиграна!", 2
+                    EndGame False
                     ext = True
                 End If
                 AvailableCalc
@@ -903,6 +730,20 @@ Sub DrawNum (x, y, n, c)
     Next
 End Sub
 
+'Завершение игры. Удаление профиля, запись в историю
+Sub EndGame (win)
+    Open HistFile For Append As #1
+    Print #1, Profile.Name + _
+        " с " + Profile.Start + _
+        " по " + Date$ + " " + Time$ + _
+        ", время: " + ToString$(Profile.Hrs) + ":" + ToString$(Profile.Min) + ":" + ToString$(Profile.Sec) + _
+        ", очки:" + Str$(Profile.Score) + _
+        ", циклов:" + Str$(Profile.Rewrites)
+    Close #1
+    If _FileExists(ProfileFile) Then Kill ProfileFile
+End Sub
+
 '$INCLUDE: 'interface.bas'
 '$INCLUDE: 'inkey.bas'
 '$INCLUDE: 'misc.bas'
+'$INCLUDE: 'profile.bas'
