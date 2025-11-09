@@ -63,7 +63,7 @@ Dim Shared Fade As Integer 'FadeIn Grade (255 in start, 0 - normal)
 ReDim Shared prs(4) As String 'Список профилей (для выбора в меню)
 Dim Shared ProfileFile As String
 Dim Shared LastName As String
-Dim Shared ColGray: ColGray = _RGB32(64, 64, 64)
+Dim Shared ColGray&: ColGray& = _RGB32(64, 64, 64)
 
 'Внутриигровые переменные
 Dim Shared Profile As ProfileT
@@ -134,16 +134,16 @@ Sub MainMenu
     Do
         _Limit 60
         _PutImage (0, 0), Background
-        PrintAt ScrWidth / 2 - 6 * FntW / 2, 50, "NUMS 2"
+        PrintCn 50, "NUMS 2"
         For i = 0 To max
             y = 228 + i * FntH * 2
             If k = i Then
                 Line (ScrWidth / 2 - 100, y - FntH / 2)-_
                     Step(200, FntH * 2 - 1), CurColor~&(a), BF
             End If
-            PrintAt ScrWidth / 2 - Len(m(i)) * FntW / 2, y, m(i)
+            PrintCn y, m(i)
         Next
-        PrintAt ScrWidth / 2 - 26 * FntW / 2, 680, "Enter - выбор, Esc - выход"
+        PrintCn 680, "Enter - выбор, Esc - выход"
         FadeIn
         _Display
         key$ = InKey$
@@ -170,7 +170,7 @@ Sub SelectProfile
     Do
         _Limit 60
         _PutImage (0, 0), Background
-        PrintAt ScrWidth / 2 - 14 * FntW / 2, 50, "Выбери профиль"
+        PrintCn 50, "Выбери профиль"
 
         For i = 0 To MaxProfiles - 1
             y = 252 + i * FntH * 2
@@ -179,9 +179,9 @@ Sub SelectProfile
                     Step(740, FntH * 2 - 1), CurColor~&(a), BF
             End If
             If prs(i) <> "" Then n$ = prs(i) Else n$ = "Новая игра"
-            PrintAt ScrWidth / 2 - Len(n$) * FntW / 2, y, n$
+            PrintCn y, n$
         Next
-        PrintAt ScrWidth / 2 - 39 * FntW / 2, 680, "Enter - выбор, Esc - назад, D - удалить"
+        PrintCn 680, "Enter - выбор, Esc - назад, D - удалить"
         FadeIn
         _Display
         key$ = InKey$
@@ -228,7 +228,7 @@ End Sub
 
 Function NewProfile
     DrawWindow 3, 0
-    PrintAt ScrWidth / 2 - 11 * FntW / 2, 324, "Имя профиля"
+    PrintCn 324, "Имя профиля"
     PCopy 0, 1
     n$ = LastName
     x = ScrWidth / 2 - 10 * FntW / 2
@@ -264,7 +264,7 @@ End Function
 'Диалог удаления профиля
 Sub DeleteProfile (pf$)
     DrawWindow 3, 0
-    PrintAt ScrWidth / 2 - 8 * FntW / 2, 324, "Уверены?"
+    PrintCn 324, "Уверены?"
     PCopy 0, 1
     k = 1
     x = ScrWidth / 2 - 7 * FntW / 2
@@ -274,7 +274,7 @@ Sub DeleteProfile (pf$)
         _Limit 60
         PCopy 1, 0
         Line (x + k * 54 - 18, 360)-Step(60, 47), CurColor(a), BF
-        PrintAt x, 372, "Да  Нет"
+        PrintCn 372, "Да  Нет"
         _Display
         key$ = InKey$
         If kLeft Or kRight Then k = 1 - k: a = 0
@@ -604,7 +604,7 @@ Sub DrawGameField (left As Integer, top As Integer)
             DrawNum left - 10, top + r * Size + 7, Nm(r + Scroll), 1
             If r > 0 Then
                 If Nm(r + Scroll) > Nm(r + Scroll - 1) + 1 Then _
-                    Line (left - 51, top + r * Size)-(left - 11, top + r * Size - 1), ColGray, BF
+                    Line (left - 51, top + r * Size)-(left - 11, top + r * Size - 1), ColGray&, BF
             End If
             'Count
             If Cn(r + Scroll) > 0 Then DrawNum left + GameWidth * Size + 10, top + r * Size + 7, Cn(r + Scroll), 0
@@ -639,11 +639,11 @@ Sub DrawScrollbar
     If ScrollBar.Bright < 0 Then ScrollBar.AN = 0
     br = ScrollBar.Bright
     If br > 255 Then br = 255
-    col& = _RGBA32(255, 255, 255, br / 2)
-    Line (ScrollBar.Left, t + 1)-(ScrollBar.Left, t + l - 1), col&
-    Line (ScrollBar.Left + 1, t)-(ScrollBar.Left + 1, t + l), col&
-    Line (ScrollBar.Left + 2, t)-(ScrollBar.Left + 2, t + l), col&
-    Line (ScrollBar.Left + 3, t + 1)-(ScrollBar.Left + 3, t + l - 1), col&
+    col = _RGBA32(255, 255, 255, br / 2)
+    Line (ScrollBar.Left, t + 1)-(ScrollBar.Left, t + l - 1), col
+    Line (ScrollBar.Left + 1, t)-(ScrollBar.Left + 1, t + l), col
+    Line (ScrollBar.Left + 2, t)-(ScrollBar.Left + 2, t + l), col
+    Line (ScrollBar.Left + 3, t + 1)-(ScrollBar.Left + 3, t + l - 1), col
 End Sub
 
 Sub DrawStats (an)
@@ -663,7 +663,7 @@ Sub DrawStats (an)
     y = 276
     w = 400
     h = 216
-    Line (x, y)-(x + w, y + h), ColGray, B
+    Line (x, y)-(x + w, y + h), ColGray&, B
     col& = _RGB(255, 255, 255)
     max = 0
     For i = 0 To MaxStatistic
@@ -677,11 +677,11 @@ Sub DrawStats (an)
     End Select
     If m < 20 Then m = 20
     For i = 0 To 1 Step 0.25
-        Line (x - 4, y + h * i)-(x + w, y + h * i), ColGray
+        Line (x - 4, y + h * i)-(x + w, y + h * i), ColGray&
         DrawNum x - 6, y + h * i - 5, m * (1 - i), 1
     Next
     Line (x + w, y + h - Statistic(MaxStatistic) / m * h)-_
-        (x + w + 4, y + h - Statistic(MaxStatistic) / m * h), ColGray
+        (x + w + 4, y + h - Statistic(MaxStatistic) / m * h), ColGray&
     DrawNum x + w + 6, y + h - Statistic(MaxStatistic) / m * h - 5, Statistic(MaxStatistic), 0
     For i = 0 To MaxStatistic - 1
         Line (x + i / MaxStatistic * w, y + h - Statistic(i) / m * h)- _
@@ -903,119 +903,6 @@ Sub DrawNum (x, y, n, c)
     Next
 End Sub
 
-Sub PrintAt (x, y, s$)
-    For i = 0 To Len(s$) - 1
-        c = Asc(Mid$(s$, i + 1, 1))
-        Select Case c
-            Case 32 To 127: n = c - 32
-            Case 192 To 255: n = c - 96
-        End Select
-        xi = (n Mod 32) * FntW
-        yi = Int(n / 32) * FntH
-        _PutImage (x + i * FntW, y), Font, 0, (xi, yi)-(xi + FntW - 1, yi + FntH - 1)
-    Next
-End Sub
-
-Function ToString$ (i)
-    s$ = LTrim$(Str$(i))
-    If Len(s$) < 2 Then s$ = "0" + s$
-    ToString$ = s$
-End Function
-
-'mode - 0-neutral, 1-good, 2-bad
-Sub MsgBox (m$, mode)
-    PCopy 0, 1
-    DrawWindow 1, mode
-    PrintAt ScrWidth / 2 - Len(m$) * FntW / 2, ScrHeight / 2 - FntH / 2, m$
-    _Display
-    _Delay 1
-    If mode > 0 Then _Delay 3
-    PCopy 1, 0
-End Sub
-
-'mode - 0-neutral, 1-good, 2-bad
-Sub DrawWindow (strings, mode)
-    If mode = 0 Then r = 64: g = 64: b = 64
-    If mode = 1 Then r = 0: g = 128: b = 0
-    If mode = 2 Then r = 128: g = 0: b = 0
-    For s = 0.2 To 1.01 Step 0.1
-        _Limit 60
-        x1 = ScrWidth / 2 - s * FntW * 22
-        y1 = ScrHeight / 2 - s * (strings + 2) * FntH / 2
-        x2 = ScrWidth / 2 + s * FntW * 22
-        y2 = ScrHeight / 2 + s * (strings + 2) * FntH / 2
-        For i = 0 To 7
-            c = 1 - i * 0.1
-            Line (x1 + i, y1 + i)-(x2 - i, y2 - i), _RGB(r * c, g * c, b * c), BF
-        Next
-        _Display
-    Next
-End Sub
-
-Sub FadeIn
-    If Fade > 0 Then
-        Fade = Fade - 8
-        Line (0, 0)-(ScrWidth - 1, ScrHeight - 1), _RGBA(0, 0, 0, Fade), BF
-    End If
-End Sub
-
-Sub FadeOut
-    PCopy 0, 1
-    For b = 0 To 255 Step 8
-        _Limit 60
-        PCopy 1, 0
-        Line (0, 0)-(ScrWidth - 1, ScrHeight - 1), _RGBA(0, 0, 0, b), BF
-        _Display
-    Next
-End Sub
-
-'Вычисление цвета курсороа
-Function CurColor~& (a)
-    CurColor~& = _RGBA(84, 97, 252, 128 + Sin(a) * 128)
-    a = a + 0.1
-    If a > 6.28 Then a = a - 6.28
-End Function
-
-Function kLeft
-    kLeft = key$ = Chr$(0) + Chr$(75) Or key$ = "o" Or key$ = "щ"
-End Function
-
-Function kRight
-    kRight = key$ = Chr$(0) + Chr$(77) Or key$ = "p" Or key$ = "з"
-End Function
-
-Function kUp
-    kUp = key$ = Chr$(0) + Chr$(72) Or key$ = "q" Or key$ = "й"
-End Function
-
-Function kDown
-    kDown = key$ = Chr$(0) + Chr$(80) Or key$ = "a" Or key$ = "ф"
-End Function
-
-Function kEnter
-    kEnter = key$ = Chr$(13) Or key$ = " " Or key$ = "0"
-End Function
-
-Function kEsc
-    kEsc = key$ = Chr$(27)
-End Function
-
-Function kHome
-    kHome = key$ = Chr$(0) + Chr$(71) Or key$ = "W" Or key$ = "Ц"
-End Function
-
-Function kEnd
-    kEnd = key$ = Chr$(0) + Chr$(79) Or key$ = "S" Or key$ = "Ы"
-End Function
-
-Function kPgUp
-    kPgUp = key$ = Chr$(0) + Chr$(73) Or key$ = "w" Or key$ = "ц"
-End Function
-
-Function kPgDn
-    kPgDn = key$ = Chr$(0) + Chr$(81) Or key$ = "s" Or key$ = "ы"
-End Function
-
-Function ProFileName$ (n)
-    ProFileName$ = "Profile" + LTrim$(Str$(n + 1)) + ".sav"
-End Function
+'$INCLUDE: 'interface.bas'
+'$INCLUDE: 'inkey.bas'
+'$INCLUDE: 'misc.bas'
