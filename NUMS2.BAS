@@ -48,6 +48,8 @@ Const ScrHeight = 720
 Const FntW = 12 'Font Size
 Const FntH = 24
 Const Size = 24 'Cells Size
+Const TitleStr = 24
+Const TipStr = 672 'Координата для строки с подсказкой
 Const MaxRows = 999
 Const MaxColumns = 9
 Const VisibleRows = 28
@@ -108,7 +110,7 @@ Sub Init
     'Загрузка параметров
     If Not _FileExists(PropFile) Then Exit Sub
     Open PropFile For Input As #1
-    Input #1, LastName
+    Line Input #1, LastName
     Close #1
 End Sub
 
@@ -135,7 +137,7 @@ Sub MainMenu
     Do
         _Limit 60
         _PutImage (0, 0), Background
-        PrintCn 50, "NUMS 2"
+        PrintCn TitleStr, "NUMS 2"
         For i = 0 To max
             y = 228 + i * FntH * 2
             If k = i Then
@@ -144,7 +146,7 @@ Sub MainMenu
             End If
             PrintCn y, m(i)
         Next
-        PrintCn 680, "Enter - выбор, Esc - выход"
+        PrintCn TipStr, "Enter - выбор, Esc - выход"
         FadeIn
         _Display
         key$ = InKey$
@@ -154,7 +156,7 @@ Sub MainMenu
         If kEnter Then
             If k = 0 Then SelectProfile
             'if k = 1 then
-            'if k = 2 then
+            If k = 2 Then History
             'if k = 3 then
             'if k = 4 then
             If k = 5 Then ext = True
@@ -171,7 +173,7 @@ Sub SelectProfile
     Do
         _Limit 60
         _PutImage (0, 0), Background
-        PrintCn 50, "Выбери профиль"
+        PrintCn TitleStr, "Выбери профиль"
 
         For i = 0 To MaxProfiles - 1
             y = 252 + i * FntH * 2
@@ -182,7 +184,7 @@ Sub SelectProfile
             If prs(i) <> "" Then n$ = prs(i) Else n$ = "Новая игра"
             PrintCn y, n$
         Next
-        PrintCn 680, "Enter - выбор, Esc - назад, D - удалить"
+        PrintCn TipStr, "Enter - выбор, Esc - назад, D - удалить"
         FadeIn
         _Display
         key$ = InKey$
@@ -272,6 +274,59 @@ Sub DeleteProfile (pf$)
             End If
             ext = True
         End If
+    Loop While Not ext
+End Sub
+
+'Просмотр истории
+Sub History
+    c = -1
+    If _FileExists(HistFile) Then
+        Open HistFile For Input As #1
+        Do While Not EOF(1)
+            Line Input #1, s$
+            c = c + 1
+        Loop
+        Close #1
+        Dim st(c) As String
+        Open HistFile For Input As #1
+        For i = c To 0 Step -1
+            Line Input #1, st(i)
+        Next
+        Close #1
+    End If
+    If c < 0 Then
+        _PutImage (0, 0), Background
+        PrintCn TitleStr, "История"
+        PrintLn 0, 0, "История пока пуста"
+        PrintCn TipStr, "Esc/Enter - выход"
+        _Display
+        Do
+            key$ = InKey$
+        Loop While Not kEsc And Not kEnter
+        Exit Sub
+    End If
+    s = 0
+    m = 19
+    ext = False
+    Do
+        _Limit 60
+        _PutImage (0, 0), Background
+        PrintCn TitleStr, "История"
+        For i = 0 To m
+            If s + i <= c Then
+                PrintAt 12, 82 + i * 28, st(s + i)
+            End If
+        Next
+        PrintCn TipStr, "Esc/Enter - выход"
+        _Display
+        key$ = InKey$
+        If kUp And s > 0 Then s = s - 1
+        If kDown And s < c - m Then s = s + 1
+        If kPgUp Then s = s - 20: If s < 0 Then s = 0
+        If kPgDn Then s = s + 20: If s > c - m Then s = c - m
+        If kHome Then s = 0
+        If kEnd Then s = c - m
+        If kEsc Or kEnter Then ext = True
     Loop While Not ext
 End Sub
 
@@ -466,11 +521,11 @@ Sub DrawScrollbar
     If ScrollBar.Bright < 0 Then ScrollBar.AN = 0
     br = ScrollBar.Bright
     If br > 255 Then br = 255
-    col = _RGBA32(255, 255, 255, br / 2)
-    Line (ScrollBar.Left, t + 1)-(ScrollBar.Left, t + l - 1), col
-    Line (ScrollBar.Left + 1, t)-(ScrollBar.Left + 1, t + l), col
-    Line (ScrollBar.Left + 2, t)-(ScrollBar.Left + 2, t + l), col
-    Line (ScrollBar.Left + 3, t + 1)-(ScrollBar.Left + 3, t + l - 1), col
+    col& = _RGBA32(255, 255, 255, br / 2)
+    Line (ScrollBar.Left, t + 1)-(ScrollBar.Left, t + l - 1), col&
+    Line (ScrollBar.Left + 1, t)-(ScrollBar.Left + 1, t + l), col&
+    Line (ScrollBar.Left + 2, t)-(ScrollBar.Left + 2, t + l), col&
+    Line (ScrollBar.Left + 3, t + 1)-(ScrollBar.Left + 3, t + l - 1), col&
 End Sub
 
 Sub DrawStats (an)
