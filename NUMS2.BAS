@@ -25,7 +25,8 @@ Type StatsT
     Available As Integer
 End Type
 
-Type ScrollBarT
+Type ScrollT
+    OldValue As Integer
     AN As Integer
     Left As Integer
     Height As Integer
@@ -80,8 +81,8 @@ Dim Shared Sel As Cell
 Dim Shared Stats As StatsT
 Dim Shared Left As Integer 'Point for draw field
 Dim Shared Top As Integer
-Dim Shared Scroll As Integer 'Scroll Shift
-Dim Shared ScrollBar As ScrollBarT
+Dim Shared Shift As Integer
+Dim Shared Scroll As ScrollT
 Dim Shared Statistic(MaxStatistic) As Integer
 Dim Shared ExpAns(MaxExpPices) As ExpPartT 'Массив частиц взрыва
 Dim Shared ExpAnN As Integer 'Индекс для следующей частицы
@@ -337,11 +338,11 @@ Sub Game
     Sel.R = 0
     Sel.C = 0
     Sel.Enable = False
-    Scroll = 0
-    ScrollBar.AN = 0
-    ScrollBar.Left = Left + GameWidth * Size + 2
-    ScrollBar.Height = ScrHeight - Size * 2 - 1
-    ScrollBar.Bright = 0
+    Scroll.AN = 0
+    Scroll.Left = Left + GameWidth * Size + 2
+    Scroll.Height = ScrHeight - Size * 2 - 1
+    Scroll.Bright = 0
+    Shift = 0 'Сдвиг
     an = 0 'Animation frame
     dl = 0 'Delay before messages
     ast = 0 'AutoSaveTimer
@@ -351,25 +352,18 @@ Sub Game
     AvailableCalc
     StayCalc
     Do
-        'Background
         _Limit 60
         _PutImage (0, 0), Background
 
-        'Calculating scrollbar
-        oldscroll = Scroll
-        If Scroll > Cur.R - Border Then Scroll = Cur.R - Border
-        If Scroll < Cur.R - VisibleRows + Border + 1 Then Scroll = Cur.R - VisibleRows + Border + 1
-        If Scroll > GameHeight - VisibleRows Then Scroll = GameHeight - VisibleRows
-        If Scroll < 0 Then Scroll = 0
-        If oldscroll <> Scroll Then ScrollBar.AN = 1
+        ScrollCalc
 
-        'Cursor
-        _PutImage (Left + Cur.C * Size, Top + Cur.R * Size - Scroll * Size), Cursor, 0, (an, 0)-(an + Size - 1, Size - 1)
+        'Курсор
+        _PutImage (Left + Cur.C * Size, Top + Cur.R * Size - Shift * Size), Cursor, 0, (an, 0)-(an + Size - 1, Size - 1)
         an = an + 1
         If an > Size Then an = 0
 
         DrawGameField Left, Top
-        DrawScrollbar
+        DrawScrollBar
         DrawStats an
 
         'Check game status
@@ -460,8 +454,8 @@ Sub Fire
                 M(Sel.R, Sel.C) = 0
                 M(Cur.R, Cur.C) = 0
                 Profile.Score = Profile.Score + 2
-                ExplodeAdd Left + Sel.C * Size, Top + (Sel.R - Scroll) * Size
-                ExplodeAdd Left + Cur.C * Size, Top + (Cur.R - Scroll) * Size
+                ExplodeAdd Left + Sel.C * Size, Top + (Sel.R - Shift) * Size
+                ExplodeAdd Left + Cur.C * Size, Top + (Cur.R - Shift) * Size
                 If Collapse Then ScrollBar.AN = 1
                 AvailableCalc
                 StayCalc
@@ -476,34 +470,34 @@ Sub DrawGameField (left As Integer, top As Integer)
     For r = 0 To VisibleRows - 1
         For c = 0 To GameWidth - 1
             If M(r, c) >= 0 Then
-                sx = M(r + Scroll, c) * Size
-                If Sel.Enable And r = Sel.R - Scroll And c = Sel.C Then S = 1 Else S = 0
+                sx = M(r + Shift, c) * Size
+                If Sel.Enable And r = Sel.R - Shift And c = Sel.C Then S = 1 Else S = 0
                 _PutImage (left + c * Size, top + r * Size), Nums, 0, (sx, S * Size)-(sx + Size - 1, S * Size + Size - 1)
             End If
         Next
-        If M(r + Scroll, 0) >= 0 Then
+        If M(r + Shift, 0) >= 0 Then
             'Num
-            DrawNum left - 10, top + r * Size + 7, Nm(r + Scroll), 1
+            DrawNum left - 10, top + r * Size + 7, Nm(r + Shift), 1
             If r > 0 Then
-                If Nm(r + Scroll) > Nm(r + Scroll - 1) + 1 Then _
+                If Nm(r + shift) > Nm(r + shift - 1) + 1 Then _
                     Line (left - 51, top + r * Size)-(left - 11, top + r * Size - 1), ColGray&, BF
             End If
             'Count
-            If Cn(r + Scroll) > 0 Then DrawNum left + GameWidth * Size + 10, top + r * Size + 7, Cn(r + Scroll), 0
+            If Cn(r + Shift) > 0 Then DrawNum left + GameWidth * Size + 10, top + r * Size + 7, Cn(r + Shift), 0
         End If
     Next
     'Up and Down Tips
     For c = 0 To GameWidth - 1
-        If Scroll > 0 Then
+        If Shift > 0 Then
             d = 0
-            For r = Scroll - 1 To 0 Step -1
+            For r = Shift - 1 To 0 Step -1
                 If M(r, c) > 0 Then d = M(r, c): Exit For
             Next
             _PutImage (left + c * Size, 0), Nums, 0, (d * Size, 2 * Size)-(d * Size + Size - 1, 3 * Size - 1)
         End If
-        If Scroll < GameHeight - VisibleRows Then
+        If Shift < GameHeight - VisibleRows Then
             d = 0
-            For r = Scroll + VisibleRows To GameHeight
+            For r = Shift + VisibleRows To GameHeight
                 If M(r, c) > 0 Then d = M(r, c): Exit For
             Next
             _PutImage (left + c * Size, 719 - Size), Nums, 0, (d * Size, 2 * Size)-(d * Size + Size - 1, 3 * Size - 1)
@@ -511,21 +505,30 @@ Sub DrawGameField (left As Integer, top As Integer)
     Next
 End Sub
 
-Sub DrawScrollbar
-    If GameHeight <= VisibleRows Or ScrollBar.AN = 0 Then Exit Sub
-    l = VisibleRows / GameHeight * ScrollBar.Height
-    t = Size + Scroll / GameHeight * ScrollBar.Height
-    If ScrollBar.AN > 0 Then ScrollBar.Bright = ScrollBar.Bright + 10
-    If ScrollBar.Bright > 512 Then ScrollBar.AN = -1
-    If ScrollBar.AN < 0 Then ScrollBar.Bright = ScrollBar.Bright - 5
-    If ScrollBar.Bright < 0 Then ScrollBar.AN = 0
-    br = ScrollBar.Bright
+Sub ScrollCalc
+    Scroll.OldValue = Shift
+    If Shift > Cur.R - Border Then Shift = Cur.R - Border
+    If Shift < Cur.R - VisibleRows + Border + 1 Then Shift = Cur.R - VisibleRows + Border + 1
+    If Shift > GameHeight - VisibleRows Then Shift = GameHeight - VisibleRows
+    If Shift < 0 Then Shift = 0
+    If Scroll.OldValue <> Shift Then Scroll.AN = 1
+End Sub
+
+Sub DrawScrollBar
+    If GameHeight <= VisibleRows Or Scroll.AN = 0 Then Exit Sub
+    l = VisibleRows / GameHeight * Scroll.Height
+    t = Size + Shift / GameHeight * Scroll.Height
+    If Scroll.AN > 0 Then Scroll.Bright = Scroll.Bright + 10
+    If Scroll.Bright > 512 Then Scroll.AN = -1
+    If Scroll.AN < 0 Then Scroll.Bright = Scroll.Bright - 5
+    If Scroll.Bright < 0 Then Scroll.AN = 0
+    br = Scroll.Bright
     If br > 255 Then br = 255
     col& = _RGBA32(255, 255, 255, br / 2)
-    Line (ScrollBar.Left, t + 1)-(ScrollBar.Left, t + l - 1), col&
-    Line (ScrollBar.Left + 1, t)-(ScrollBar.Left + 1, t + l), col&
-    Line (ScrollBar.Left + 2, t)-(ScrollBar.Left + 2, t + l), col&
-    Line (ScrollBar.Left + 3, t + 1)-(ScrollBar.Left + 3, t + l - 1), col&
+    Line (Scroll.Left, t + 1)-(Scroll.Left, t + l - 1), col&
+    Line (Scroll.Left + 1, t)-(Scroll.Left + 1, t + l), col&
+    Line (Scroll.Left + 2, t)-(Scroll.Left + 2, t + l), col&
+    Line (Scroll.Left + 3, t + 1)-(Scroll.Left + 3, t + l - 1), col&
 End Sub
 
 Sub DrawStats (an)
@@ -732,8 +735,8 @@ Function Collapse
                 Cn(r2) = Cn(r2 + 1)
             Next
             For c = 0 To GameWidth - 1
-                ExplodeAdd Left + c * Size, Top + (r - Scroll) * Size
-                ExplodeAdd Left + c * Size, Top + (r - Scroll) * Size
+                ExplodeAdd Left + c * Size, Top + (r - Shift) * Size
+                ExplodeAdd Left + c * Size, Top + (r - Shift) * Size
             Next
             GameHeight = GameHeight - 1
             If Cur.R > r Then Cur.R = Cur.R - 1
