@@ -33,6 +33,20 @@ Type ScrollT
     Bright As Integer
 End Type
 
+Type ScrollBarT
+    Left As Integer 'Координата по X
+    Top As Integer 'Координата по Y
+    Height As Integer 'Высота
+
+    Value As Integer 'Значение
+    Lenght As Integer 'Длина полоски (количество видимых строк
+    Max As Integer 'Всего строк
+
+    OldValue As Integer 'Предыдущее значение
+    AN As Integer 'Направление анимации
+    Bright As Integer 'Текущая яркость
+End Type
+
 Type ExpPartT 'Частица взрыва
     AN As Integer
     X As Single
@@ -82,7 +96,8 @@ Dim Shared Stats As StatsT
 Dim Shared Left As Integer 'Point for draw field
 Dim Shared Top As Integer
 Dim Shared Shift As Integer
-Dim Shared Scroll As ScrollT
+Dim Shared Scroll As ScrollT 'Старый скроллбар
+Dim Shared ScrollBar As ScrollBarT 'Попытка переделать скроллбар под универсальный
 Dim Shared Statistic(MaxStatistic) As Integer
 Dim Shared ExpAns(MaxExpPices) As ExpPartT 'Массив частиц взрыва
 Dim Shared ExpAnN As Integer 'Индекс для следующей частицы
@@ -306,6 +321,10 @@ Sub History
         Loop While Not kEsc And Not kEnter
         Exit Sub
     End If
+    Scroll.AN = 0
+    Scroll.Left = ScrWidth - 6
+    Scroll.Height = 556 ' ScrHeight - Size * 2 - 1
+    Scroll.Bright = 0
     s = 0
     m = 19
     ext = False
@@ -319,6 +338,19 @@ Sub History
             End If
         Next
         PrintCn TipStr, "Esc/Enter - выход"
+
+        'Скролл-бар
+        Shift = s
+        Scroll.OldValue = Shift
+        If Shift > Cur.R - Border Then Shift = Cur.R - Border
+        If Shift < Cur.R - VisibleRows + Border + 1 Then Shift = Cur.R - VisibleRows + Border + 1
+        If Shift > GameHeight - VisibleRows Then Shift = GameHeight - VisibleRows
+        If Shift < 0 Then Shift = 0
+        If Scroll.OldValue <> Shift Then Scroll.AN = 1
+        DrawScrollBar
+
+
+
         _Display
         key$ = InKey$
         If kUp And s > 0 Then s = s - 1
@@ -338,10 +370,16 @@ Sub Game
     Sel.R = 0
     Sel.C = 0
     Sel.Enable = False
+
     Scroll.AN = 0
     Scroll.Left = Left + GameWidth * Size + 2
     Scroll.Height = ScrHeight - Size * 2 - 1
     Scroll.Bright = 0
+
+    ScrollBar.Left = Left + GameWidth * Size + 7 '2
+    ScrollBar.Top = Size
+    ScrollBar.Height = ScrHeight - Size * 2 - 1
+
     Shift = 0 'Сдвиг
     an = 0 'Animation frame
     dl = 0 'Delay before messages
@@ -355,7 +393,13 @@ Sub Game
         _Limit 60
         _PutImage (0, 0), Background
 
-        ScrollCalc
+        'Вычисление скролл-бара
+        Scroll.OldValue = Shift
+        If Shift > Cur.R - Border Then Shift = Cur.R - Border
+        If Shift < Cur.R - VisibleRows + Border + 1 Then Shift = Cur.R - VisibleRows + Border + 1
+        If Shift > GameHeight - VisibleRows Then Shift = GameHeight - VisibleRows
+        If Shift < 0 Then Shift = 0
+        If Scroll.OldValue <> Shift Then Scroll.AN = 1
 
         'Курсор
         _PutImage (Left + Cur.C * Size, Top + Cur.R * Size - Shift * Size), Cursor, 0, (an, 0)-(an + Size - 1, Size - 1)
@@ -364,6 +408,7 @@ Sub Game
 
         DrawGameField Left, Top
         DrawScrollBar
+        DrawScrollBarNew ScrollBar, Shift
         DrawStats an
 
         'Check game status
@@ -505,15 +550,6 @@ Sub DrawGameField (left As Integer, top As Integer)
     Next
 End Sub
 
-Sub ScrollCalc
-    Scroll.OldValue = Shift
-    If Shift > Cur.R - Border Then Shift = Cur.R - Border
-    If Shift < Cur.R - VisibleRows + Border + 1 Then Shift = Cur.R - VisibleRows + Border + 1
-    If Shift > GameHeight - VisibleRows Then Shift = GameHeight - VisibleRows
-    If Shift < 0 Then Shift = 0
-    If Scroll.OldValue <> Shift Then Scroll.AN = 1
-End Sub
-
 Sub DrawScrollBar
     If GameHeight <= VisibleRows Or Scroll.AN = 0 Then Exit Sub
     l = VisibleRows / GameHeight * Scroll.Height
@@ -529,6 +565,13 @@ Sub DrawScrollBar
     Line (Scroll.Left + 1, t)-(Scroll.Left + 1, t + l), col&
     Line (Scroll.Left + 2, t)-(Scroll.Left + 2, t + l), col&
     Line (Scroll.Left + 3, t + 1)-(Scroll.Left + 3, t + l - 1), col&
+End Sub
+
+'Рисование скролл-бара
+'nv - Новое значение
+Sub DrawScrollBarNew (sb As ScrollBarT, nv)
+    Line (sb.Left, sb.Top)-Step(3, sb.Height), _RGB(0, 0, 0), BF
+    Line (sb.Left + 1, sb.Top + 1)-Step(1, sb.Height - 2), _RGB(30, 30, 30), BF
 End Sub
 
 Sub DrawStats (an)
