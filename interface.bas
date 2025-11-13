@@ -90,3 +90,31 @@ Sub FadeOut
         _Display
     Next
 End Sub
+
+'Рисование скролл-бара
+'sb - экземпляр скролл-бара, nv - Новое значение сдвига, max - максимальное количество строк
+Sub DrawScrollBar (sb As ScrollBarT, nv, max)
+    'Применение новых значений
+    If sb.Value <> nv Or sb.Max <> max Then sb.AN = 1
+    sb.Value = nv
+    sb.Max = max
+    If sb.Max <= sb.Length Or sb.AN = 0 Then Exit Sub
+    'Вычисляем размеры
+    t = sb.Top + (sb.Value / sb.Max * sb.Height)
+    l = sb.Length / sb.Max * sb.Height
+    'Вычисляем цвет
+    If sb.AN > 0 Then sb.Bright = sb.Bright + 10
+    If sb.Bright > 512 Then sb.AN = -1
+    If sb.AN < 0 Then sb.Bright = sb.Bright - 5
+    If sb.Bright < 0 Then sb.AN = 0
+    br = sb.Bright
+    If br > 255 Then br = 255
+    col& = _RGBA32(255, 255, 255, br / 2)
+    'Рисуем полоску
+    Line (sb.Left, t + 1)-Step(0, l - 2), col&
+    Line (sb.Left + 1, t)-Step(0, l), col&
+    Line (sb.Left + 2, t)-Step(0, l), col&
+    Line (sb.Left + 3, t + 1)-Step(0, l - 2), col&
+End Sub
+
+
