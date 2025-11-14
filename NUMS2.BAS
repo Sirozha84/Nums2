@@ -160,8 +160,8 @@ Sub MainMenu
             If k = 0 Then SelectProfile
             'if k = 1 then
             If k = 2 Then History
-            'if k = 3 then
-            'if k = 4 then
+            If k = 3 Then Instruction
+            If k = 4 Then About
             If k = 5 Then ext = True
         End If
     Loop While Not ext
@@ -340,6 +340,42 @@ Sub History
         If kEnd Then s = c - m
         If kEsc Or kEnter Then ext = True
     Loop While Not ext
+End Sub
+
+Sub Instruction
+    _PutImage (0, 0), Background
+    PrintCn TitleStr, "Инструкция"
+    PrintLn 0, 10, "Цель игры - вычеркнуть все цифры из столбика."
+    PrintLn 1, 10, "Цифры вычеркиваются парами, одинаковыми, либо дающими в сумме 10, например 2 и 2, 4 и 6."
+    PrintLn 2, 10, "Пара должна находиться в одной колонке или строке, которая может быть перенесена на следующую."
+    PrintLn 3, 10, "Между парой не должно быть других цифр, но количество пробелов может быть любое."
+    PrintLn 4, 10, "Когда не остается доступных ходов, все оставшиеся цифры переписываются"
+    PrintLn 5, 10, "дальше по столбику и игра продолжается."
+    PrintLn 6, 10, "Бывают ситуации, когда даже после переписывания ходов не остается,"
+    PrintLn 7, 10, "либо игра зацикливается на одних и тех же цифрах."
+    PrintLn 8, 10, "В таком случае дается возможность выбрать пару из любых цифр."
+    PrintLn 9, 10, "Управление: Выбор цифры - пробел, Enter или 0 на цифровом блоке."
+    PrintLn 10, 10, "Так же можно играть на раскладке OPQASpace."
+    PrintCn TipStr, "Esc/Enter - выход"
+    _Display
+    Do
+        key$ = InKey$
+    Loop While Not kEsc And Not kEnter
+End Sub
+
+Sub About
+    _PutImage (0, 0), Background
+    PrintCn TitleStr, "Об игре"
+    PrintLn 0, 4, "NUMS 2"
+    PrintLn 1, 4, "Версия:       1.0 (14.11.2025)"
+    PrintLn 2, 4, "Автор:          Сергей Гордеев"
+    PrintLn 3, 4, "Сайт:           sg-software.ru"
+    PrintLn 4, 4, "Группа в ВК: vk.com/sgsoftware"
+    PrintCn TipStr, "Esc/Enter - выход"
+    _Display
+    Do
+        key$ = InKey$
+    Loop While Not kEsc And Not kEnter
 End Sub
 
 'Главная процедура игры
