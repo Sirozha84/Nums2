@@ -96,6 +96,10 @@ Dim Shared Background
 Dim Shared Cursor
 Dim Shared Digits
 
+'Звуки
+Dim Shared SndClick
+Dim Shared SndExplode
+
 Init
 MainMenu
 
@@ -110,6 +114,9 @@ Sub Init
     Nums = _LoadImage("Graphics\nums.png", 32)
     Cursor = _LoadImage("Graphics\cursor.png", 32)
     Digits = _LoadImage("Graphics\digits.png", 32)
+    'Загрузка звуков
+    SndClick = _SndOpen("Sounds/click.wav")
+    SndExplode = _SndOpen("Sounds/explode.wav")
     'Загрузка параметров
     If Not _FileExists(PropFile) Then Exit Sub
     Open PropFile For Input As #1
@@ -496,6 +503,7 @@ Sub Game
 End Sub
 
 Sub Fire
+    _SndPlay SndClick
     If Not Sel.Enable Then
         'First select
         If M(Cur.R, Cur.C) > 0 Then Sel.R = Cur.R: Sel.C = Cur.C: Sel.Enable = True
@@ -514,6 +522,7 @@ Sub Fire
                 If Collapse Then ScrollBar.AN = 1
                 AvailableCalc
                 StayCalc
+                _SndPlay SndExplode
             End If
             Sel.Enable = False
         End If
