@@ -18,3 +18,20 @@ End Function
 Function ProFileName$ (n)
     ProFileName$ = "Profile" + LTrim$(Str$(n + 1)) + ".sav"
 End Function
+
+'«апуск музыки
+Sub MusicStart
+    NrInPlaylist = 0
+    _SndPlay Music(NrInPlaylist)
+End Sub
+
+'ѕроверка что музыка не закончилась, а если закончилась - играть следующий трек
+Sub MusicPlay
+    '    _SndPlay Music(NrInPlaylist)
+    If Not _SndPlaying(Music(NrInPlaylist)) Then
+        NrInPlaylist = NrInPlaylist + 1
+        If NrInPlaylist > MusicCount Then NrInPlaylist = 0
+        _SndPlay Music(NrInPlaylist)
+    End If
+End Sub
+

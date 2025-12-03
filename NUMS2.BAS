@@ -99,8 +99,12 @@ Dim Shared Digits
 'Звуки
 Dim Shared SndClick
 Dim Shared SndExplode
+Const MusicCount = 0 'Последний трек в плейлисте
+Dim Shared Music(MusicCount)
+Dim Shared NrInPlaylist ' Номер текущего трека в плейлисте
 
 Init
+MusicStart
 MainMenu
 
 Sub Init
@@ -117,6 +121,8 @@ Sub Init
     'Загрузка звуков
     SndClick = _SndOpen("Sounds/click.wav")
     SndExplode = _SndOpen("Sounds/explode.wav")
+    Music(0) = _SndOpen("Sounds/music1.mp3")
+
     'Загрузка параметров
     If Not _FileExists(PropFile) Then Exit Sub
     Open PropFile For Input As #1
@@ -171,6 +177,7 @@ Sub MainMenu
             If k = 4 Then About
             If k = 5 Then ext = True
         End If
+        MusicPlay
     Loop While Not ext
     FadeOut
     System
@@ -219,6 +226,7 @@ Sub SelectProfile
             End If
         End If
         If (key$ = "d" Or key$ = "в") And prs(k) <> "" Then DeleteProfile (ProFileName(k))
+        MusicPlay
     Loop While Not ext
     'FadeOut
 
@@ -257,6 +265,7 @@ Function NewProfile
             NewProfile = False
             ext = True
         End If
+        MusicPlay
     Loop While Not ext
 End Function
 
@@ -284,6 +293,7 @@ Sub DeleteProfile (pf$)
             End If
             ext = True
         End If
+        MusicPlay
     Loop While Not ext
 End Sub
 
@@ -314,6 +324,7 @@ Sub History
         _Display
         Do
             key$ = InKey$
+            MusicPlay
         Loop While Not kEsc And Not kEnter
         Exit Sub
     End If
@@ -346,6 +357,7 @@ Sub History
         If kHome Then s = 0
         If kEnd Then s = c - m
         If kEsc Or kEnter Then ext = True
+        MusicPlay
     Loop While Not ext
 End Sub
 
@@ -367,6 +379,7 @@ Sub Instruction
     _Display
     Do
         key$ = InKey$
+        MusicPlay
     Loop While Not kEsc And Not kEnter
 End Sub
 
@@ -382,6 +395,7 @@ Sub About
     _Display
     Do
         key$ = InKey$
+        MusicPlay
     Loop While Not kEsc And Not kEnter
 End Sub
 
@@ -498,6 +512,7 @@ Sub Game
             End If
         End If
 
+        MusicPlay
     Loop While Not ext
     FadeOut
 End Sub
