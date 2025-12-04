@@ -36,6 +36,17 @@ Sub PrintAt (x, y, s$)
     Next
 End Sub
 
+'Рисование курсора
+'n - номер строки (начиная с 0)
+'max - последний индекс
+'ln - длина строки
+'a - номер анимации
+sub DrawCursor (n, max, ln, a)
+    y = ScrHeight / 2 - FntH / 2 - max * FntH + n * FntH * 2
+    Line (ScrWidth / 2 - fntw*ln/2, y - FntH / 2)-_
+        Step(fntw*ln, FntH * 2 - 1), CurColor~&(a), BF
+end sub
+
 'Временное сообщение
 'mode - 0-нейтральное, 1-хорошее, 2-плохое
 Sub MsgBox (m$, mode)

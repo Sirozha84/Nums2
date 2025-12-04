@@ -64,12 +64,16 @@ Const MaxProfiles = 5
 Const PropFile = "config.sav"
 Const HistFile = "history.sav"
 
+'Настройки
+Dim Shared LastName As String
+Dim Shared VolumeSnd
+Dim Shared VolumeMus
+
 'Общие переменные для меню
 Dim Shared key$
 Dim Shared Fade As Integer 'FadeIn Grade (255 in start, 0 - normal)
 Dim Shared prs(MaxProfiles - 1) As String 'Список профилей (для выбора в меню)
 Dim Shared ProfileFile As String
-Dim Shared LastName As String
 Dim Shared ColGray&: ColGray& = _RGB32(64, 64, 64)
 
 'Внутриигровые переменные
@@ -126,7 +130,9 @@ Sub Init
     'Загрузка параметров
     If Not _FileExists(PropFile) Then Exit Sub
     Open PropFile For Input As #1
-    Line Input #1, LastName
+    If Not EOF(1) Then Line Input #1, LastName
+    If Not EOF(1) Then Input #1, VolumeSnd Else VolumeSnd = 10
+    If Not EOF(1) Then Input #1, VolumeMus Else VolumeMus = 10
     Close #1
 End Sub
 
@@ -134,6 +140,8 @@ End Sub
 Sub SaveOptions
     Open PropFile For Output As #1
     Print #1, LastName
+    Print #1, VolumeSnd
+    Print #1, VolumeMus
     Close #1
 End Sub
 
@@ -155,12 +163,8 @@ Sub MainMenu
         _PutImage (0, 0), Background
         PrintCn TitleStr, "NUMS 2"
         For i = 0 To max
-            y = 228 + i * FntH * 2
-            If k = i Then
-                Line (ScrWidth / 2 - 100, y - FntH / 2)-_
-                    Step(200, FntH * 2 - 1), CurColor~&(a), BF
-            End If
-            PrintCn y, m(i)
+            If k = i Then DrawCursor i, max, 14, a
+            PrintLn i, max, m(i)
         Next
         PrintCn TipStr, "Enter - выбор, Esc - выход"
         FadeIn
@@ -171,7 +175,7 @@ Sub MainMenu
         If kEsc Then ext = True
         If kEnter Then
             If k = 0 Then SelectProfile
-            'if k = 1 then
+            If k = 1 Then Options
             If k = 2 Then History
             If k = 3 Then Instruction
             If k = 4 Then About
@@ -191,15 +195,10 @@ Sub SelectProfile
         _Limit 60
         _PutImage (0, 0), Background
         PrintCn TitleStr, "Выбери профиль"
-
         For i = 0 To MaxProfiles - 1
-            y = 252 + i * FntH * 2
-            If k = i Then
-                Line (ScrWidth / 2 - 360, y - FntH / 2)-_
-                    Step(740, FntH * 2 - 1), CurColor~&(a), BF
-            End If
+            If k = i Then DrawCursor i, MaxProfiles - 1, 58, a
             If prs(i) <> "" Then n$ = prs(i) Else n$ = "Новая игра"
-            PrintCn y, n$
+            PrintLn i, MaxProfiles - 1, n$
         Next
         PrintCn TipStr, "Enter - выбор, Esc - назад, D - удалить"
         FadeIn
@@ -296,6 +295,52 @@ Sub DeleteProfile (pf$)
         MusicPlay
     Loop While Not ext
 End Sub
+
+'Настройка
+Sub Options
+    k = 0
+    a = 0
+    ext = False
+    max = 1
+    Dim m(max) As String
+    m(0) = "  Звук: "
+    m(1) = "Музыка: "
+    Do
+        _Limit 60
+        _PutImage (0, 0), Background
+        PrintCn TitleStr, "Настройки"
+        For i = 0 To max
+            If k = i Then DrawCursor i, max, 23, a
+            If i = 0 Then s$ = m(i) + Slider$(VolumeSnd)
+            If i = 1 Then s$ = m(i) + Slider$(VolumeMus)
+            PrintLn i, max, s$
+        Next
+        PrintCn TipStr, "Стрелки - настройка, Esc - назад"
+        FadeIn
+        _Display
+        key$ = InKey$
+        If kUp Then a = 0: k = k - 1: If k < 0 Then k = max
+        If kDown Then a = 0: k = k + 1: If k > max Then k = 0
+        If kLeft Then
+            If k = 0 And VolumeSnd > 0 Then VolumeSnd = VolumeSnd - 1
+            If k = 1 And VolumeMus > 0 Then VolumeMus = VolumeMus - 1
+        End If
+        If kRight Then
+            If k = 0 And VolumeSnd < 10 Then VolumeSnd = VolumeSnd + 1
+            If k = 1 And VolumeMus < 10 Then VolumeMus = VolumeMus + 1
+        End If
+        If kEsc Then ext = True
+        MusicPlay
+    Loop While Not ext
+    SaveOptions
+End Sub
+
+Function Slider$ (v)
+    For i = 0 To v - 1: s$ = s$ + "-": Next
+    s$ = s$ + "I"
+    For i = v + 1 To 10: s$ = s$ + "-": Next
+    Slider$ = s$
+End Function
 
 'Просмотр истории
 Sub History
