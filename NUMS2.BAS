@@ -103,7 +103,7 @@ Dim Shared Digits
 'Звуки
 Dim Shared SndClick
 Dim Shared SndExplode
-Const MusicCount = 0 'Последний трек в плейлисте
+Const MusicCount = 1 'Последний трек в плейлисте
 Dim Shared Music(MusicCount)
 Dim Shared NrInPlaylist ' Номер текущего трека в плейлисте
 
@@ -126,6 +126,7 @@ Sub Init
     SndClick = _SndOpen("Sounds/click.wav")
     SndExplode = _SndOpen("Sounds/explode.wav")
     Music(0) = _SndOpen("Sounds/music1.mp3")
+    Music(1) = _SndOpen("Sounds/music2.mp3")
 
     'Загрузка параметров
     If Not _FileExists(PropFile) Then Exit Sub
@@ -322,12 +323,12 @@ Sub Options
         If kUp Then a = 0: k = k - 1: If k < 0 Then k = max
         If kDown Then a = 0: k = k + 1: If k > max Then k = 0
         If kLeft Then
-            If k = 0 And VolumeSnd > 0 Then VolumeSnd = VolumeSnd - 1
-            If k = 1 And VolumeMus > 0 Then VolumeMus = VolumeMus - 1
+            If k = 0 And VolumeSnd > 0 Then VolumeSnd = VolumeSnd - 1: SetVolume: _SndPlay SndClick
+            If k = 1 And VolumeMus > 0 Then VolumeMus = VolumeMus - 1: SetVolume
         End If
         If kRight Then
-            If k = 0 And VolumeSnd < 10 Then VolumeSnd = VolumeSnd + 1
-            If k = 1 And VolumeMus < 10 Then VolumeMus = VolumeMus + 1
+            If k = 0 And VolumeSnd < 10 Then VolumeSnd = VolumeSnd + 1: SetVolume: _SndPlay SndClick
+            If k = 1 And VolumeMus < 10 Then VolumeMus = VolumeMus + 1: SetVolume
         End If
         If kEsc Then ext = True
         MusicPlay
@@ -431,11 +432,12 @@ End Sub
 Sub About
     _PutImage (0, 0), Background
     PrintCn TitleStr, "Об игре"
-    PrintLn 0, 4, "NUMS 2"
-    PrintLn 1, 4, "Версия:       1.0 (14.11.2025)"
-    PrintLn 2, 4, "Автор:          Сергей Гордеев"
-    PrintLn 3, 4, "Сайт:           sg-software.ru"
-    PrintLn 4, 4, "Группа в ВК: vk.com/sgsoftware"
+    PrintLn 0, 5, "NUMS 2"
+    PrintLn 1, 5, "Версия:       1.0 (05.12.2025)"
+    PrintLn 2, 5, "Программа:      Сергей Гордеев"
+    PrintLn 3, 5, "Музыка:      Станислав Зарубин"
+    PrintLn 4, 5, "Сайт:           sg-software.ru"
+    PrintLn 5, 5, "Группа в ВК: vk.com/sgsoftware"
     PrintCn TipStr, "Esc/Enter - выход"
     _Display
     Do

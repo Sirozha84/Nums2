@@ -19,8 +19,18 @@ Function ProFileName$ (n)
     ProFileName$ = "Profile" + LTrim$(Str$(n + 1)) + ".sav"
 End Function
 
+'Установка громкости
+Sub SetVolume
+    _SndVol SndClick, VolumeSnd / 10
+    _SndVol SndExplode, VolumeSnd / 10
+    For i = 0 To MusicCount
+        _SndVol Music(i), VolumeMus / 10
+    Next
+End Sub
+
 'Запуск музыки
 Sub MusicStart
+    SetVolume
     NrInPlaylist = 0
     _SndPlay Music(NrInPlaylist)
 End Sub
