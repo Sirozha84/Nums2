@@ -337,9 +337,9 @@ Sub Options
 End Sub
 
 Function Slider$ (v)
-    For i = 0 To v - 1: s$ = s$ + "-": Next
-    s$ = s$ + "I"
-    For i = v + 1 To 10: s$ = s$ + "-": Next
+    For i = 0 To v - 1: s$ = s$ + "]": Next
+    s$ = s$ + "["
+    For i = v + 1 To 10: s$ = s$ + "]": Next
     Slider$ = s$
 End Function
 
