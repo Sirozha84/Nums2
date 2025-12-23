@@ -108,6 +108,7 @@ Dim Shared Music(MusicCount)
 Dim Shared NrInPlaylist ' Номер текущего трека в плейлисте
 
 Init
+Intro
 MusicStart
 MainMenu
 
@@ -900,6 +901,44 @@ Sub EndGame (win)
     Close #1
     If _FileExists(ProfileFile) Then Kill ProfileFile
 End Sub
+
+Sub Intro
+    s = ScrHeight / 22
+    Left = ScrWidth / 2 - 5 * s
+    Top = ScrHeight / 2 - 7.5 * s
+    Data 7,6,5,4,0,0,1,1,2,3
+    Data 6,0,0,0,0,0,1,0,0,0
+    Data 5,4,3,2,0,0,2,0,4,5
+    Data 0,0,0,1,0,0,3,0,0,6
+    Data 3,2,1,1,0,0,4,5,6,7
+    Dim l(9, 4)
+    For r = 0 To 4: For c = 0 To 9: Read l(c, r): Next: Next
+    For a = 0 To 1280 Step 6
+        _Limit 60
+        Line (Left + s, Top)-Step(s * 5 - 1, s * 5 - 1), _RGBA(Cl(a, 0), 0, 0, Cl(a, 0)), BF
+        Line (Left + 4 * s, Top + s)-Step(s * 5 - 1, s * 5 - 1), _RGBA(0, Cl(a, 1), 0, Cl(a, 1)), BF
+        Line (Left + 2 * s, Top + 3 * s)-Step(s * 5 - 1, s * 5 - 1), _RGBA(0, 0, Cl(a, 2), Cl(a, 2)), BF
+        For r = 0 To 4
+            For c = 0 To 9
+                If l(c, r) > 0 Then
+                    Line (Left + c * s, Top + (r + 10) * s)-Step(s - 1, s - 1), _
+                        _RGB(0, Cl(a, 4 + l(c, r) / 7) / 2, Cl(a, 3 + l(c, r) / 10)), BF
+                End If
+            Next
+        Next
+        _Display
+    Next
+    _Delay (2)
+    FadeOut
+    _Delay (1)
+End Sub
+
+Function Cl (a, i)
+    c = a - i * 255
+    If c < 0 Then c = 0
+    If c > 255 Then c = 255
+    Cl = c
+End Function
 
 '$INCLUDE: 'interface.bas'
 '$INCLUDE: 'inkey.bas'
