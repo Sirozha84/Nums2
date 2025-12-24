@@ -913,7 +913,7 @@ Sub Intro
     Data 3,2,1,1,0,0,4,5,6,7
     Dim l(9, 4)
     For r = 0 To 4: For c = 0 To 9: Read l(c, r): Next: Next
-    For a = 0 To 1280 Step 6
+    For a = 0 To 1152 Step 6
         _Limit 60
         Line (Left + s, Top)-Step(s * 5 - 1, s * 5 - 1), _RGBA(Cl(a, 0), 0, 0, Cl(a, 0)), BF
         Line (Left + 4 * s, Top + s)-Step(s * 5 - 1, s * 5 - 1), _RGBA(0, Cl(a, 1), 0, Cl(a, 1)), BF
@@ -922,7 +922,7 @@ Sub Intro
             For c = 0 To 9
                 If l(c, r) > 0 Then
                     Line (Left + c * s, Top + (r + 10) * s)-Step(s - 1, s - 1), _
-                        _RGB(0, Cl(a, 4 + l(c, r) / 7) / 2, Cl(a, 3 + l(c, r) / 10)), BF
+                        _RGB(0, Cl(a - 128, 3 + l(c, r) / 7) / 2, Cl(a, 3 + l(c, r) / 10)), BF
                 End If
             Next
         Next
@@ -930,6 +930,8 @@ Sub Intro
     Next
     _Delay (2)
     FadeOut
+    Cls
+    _Display
     _Delay (1)
 End Sub
 
