@@ -69,6 +69,7 @@ Const HistFile = "history.sav"
 Dim Shared LastName As String
 Dim Shared VolumeSnd
 Dim Shared VolumeMus
+Dim Shared FullScr
 
 'Общие переменные для меню
 Dim Shared key$
@@ -129,14 +130,15 @@ Sub Init
     SndExplode = _SndOpen("Sounds/explode.wav")
     Music(0) = _SndOpen("Sounds/music1.mp3")
     Music(1) = _SndOpen("Sounds/music2.mp3")
-
     'Загрузка параметров
     If Not _FileExists(PropFile) Then Exit Sub
     Open PropFile For Input As #1
     If Not EOF(1) Then Line Input #1, LastName
     If Not EOF(1) Then Input #1, VolumeSnd Else VolumeSnd = 10
     If Not EOF(1) Then Input #1, VolumeMus Else VolumeMus = 10
+    If Not EOF(1) Then Input #1, FullScr Else FullScr = True
     Close #1
+    If FullScr Then _FullScreen
 End Sub
 
 'Сохранение настроек
@@ -145,6 +147,7 @@ Sub SaveOptions
     Print #1, LastName
     Print #1, VolumeSnd
     Print #1, VolumeMus
+    Print #1, FullScr
     Close #1
 End Sub
 
@@ -304,18 +307,21 @@ Sub Options
     k = 0
     a = 0
     ext = False
-    max = 1
+    max = 2
     Dim m(max) As String
-    m(0) = "  Звук: "
-    m(1) = "Музыка: "
+    m(0) = " Экран: "
+    m(1) = "  Звук: "
+    m(2) = "Музыка: "
     Do
+        FullScr = _FullScreen <> 0
         _Limit 60
         _PutImage (0, 0), Background
         PrintCn TitleStr, "Настройки"
         For i = 0 To max
             If k = i Then DrawCursor i, max, 23, a
-            If i = 0 Then s$ = m(i) + Slider$(VolumeSnd)
-            If i = 1 Then s$ = m(i) + Slider$(VolumeMus)
+            If i = 0 Then If FullScr Then s$ = m(i) + "Полный     " Else s$ = m(i) + "В окне     "
+            If i = 1 Then s$ = m(i) + Slider$(VolumeSnd)
+            If i = 2 Then s$ = m(i) + Slider$(VolumeMus)
             PrintLn i, max, s$
         Next
         PrintCn TipStr, "Стрелки - настройка, Esc - назад"
@@ -325,12 +331,14 @@ Sub Options
         If kUp Then a = 0: k = k - 1: If k < 0 Then k = max
         If kDown Then a = 0: k = k + 1: If k > max Then k = 0
         If kLeft Then
-            If k = 0 And VolumeSnd > 0 Then VolumeSnd = VolumeSnd - 1: SetVolume: _SndPlay SndClick
-            If k = 1 And VolumeMus > 0 Then VolumeMus = VolumeMus - 1: SetVolume
+            If k = 0 Then FullScr = Not FullScr: If FullScr Then _FullScreen Else _FullScreen _Off
+            If k = 1 And VolumeSnd > 0 Then VolumeSnd = VolumeSnd - 1: SetVolume: _SndPlay SndClick
+            If k = 2 And VolumeMus > 0 Then VolumeMus = VolumeMus - 1: SetVolume
         End If
         If kRight Then
-            If k = 0 And VolumeSnd < 10 Then VolumeSnd = VolumeSnd + 1: SetVolume: _SndPlay SndClick
-            If k = 1 And VolumeMus < 10 Then VolumeMus = VolumeMus + 1: SetVolume
+            If k = 0 Then FullScr = Not FullScr: If FullScr Then _FullScreen Else _FullScreen _Off
+            If k = 1 And VolumeSnd < 10 Then VolumeSnd = VolumeSnd + 1: SetVolume: _SndPlay SndClick
+            If k = 2 And VolumeMus < 10 Then VolumeMus = VolumeMus + 1: SetVolume
         End If
         If kEsc Then ext = True
         MusicPlay
