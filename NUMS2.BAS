@@ -1,4 +1,5 @@
 $Debug
+$ExeIcon:'NUMS2.ico'
 
 Type ProfileT
     Name As String
