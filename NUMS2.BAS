@@ -116,7 +116,7 @@ MainMenu
 
 Sub Init
     'Экран
-    _Title "Nums2"
+    _Title "NUMS 2"
     $Resize:Smooth
     Screen _NewImage(ScrWidth, ScrHeight, 32)
     'Загрузка графики
