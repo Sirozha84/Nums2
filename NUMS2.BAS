@@ -131,13 +131,17 @@ Sub Init
     Music(0) = _SndOpen("Sounds/music1.mp3")
     Music(1) = _SndOpen("Sounds/music2.mp3")
     'Загрузка параметров
-    If Not _FileExists(PropFile) Then Exit Sub
-    Open PropFile For Input As #1
-    If Not EOF(1) Then Line Input #1, LastName
-    If Not EOF(1) Then Input #1, VolumeSnd Else VolumeSnd = 10
-    If Not EOF(1) Then Input #1, VolumeMus Else VolumeMus = 10
-    If Not EOF(1) Then Input #1, FullScr Else FullScr = True
-    Close #1
+    VolumeSnd = 10
+    VolumeMus = 10
+    FullScr = True
+    If _FileExists(PropFile) Then
+        Open PropFile For Input As #1
+        If Not EOF(1) Then Line Input #1, LastName
+        If Not EOF(1) Then Input #1, VolumeSnd
+        If Not EOF(1) Then Input #1, VolumeMus
+        If Not EOF(1) Then Input #1, FullScr
+        Close #1
+    End If
     If FullScr Then _FullScreen
 End Sub
 
@@ -443,7 +447,7 @@ Sub About
     _PutImage (0, 0), Background
     PrintCn TitleStr, "Об игре"
     PrintLn 0, 5, "NUMS 2"
-    PrintLn 1, 5, "Версия:       1.0 (05.12.2025)"
+    PrintLn 1, 5, "Версия:       1.0 (30.12.2025)"
     PrintLn 2, 5, "Программа:      Сергей Гордеев"
     PrintLn 3, 5, "Музыка:      Станислав Зарубин"
     PrintLn 4, 5, "Сайт:           sg-software.ru"
